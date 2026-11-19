@@ -111,6 +111,13 @@
       color: #fff;
       box-shadow: 0 6px 18px rgba(0, 113, 227, 0.28);
       flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .brand-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .brand-text {
@@ -239,6 +246,13 @@
       font-weight: 600;
       color: var(--text-primary);
       box-shadow: var(--shadow-sm);
+      max-width: 190px;
+    }
+
+    .profile-chip-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .profile-chip-avatar {
@@ -499,6 +513,11 @@
       gap: 4px;
       overflow-x: auto;
       max-width: 100%;
+      scrollbar-width: none;
+    }
+
+    .segmented-control::-webkit-scrollbar {
+      display: none;
     }
 
     .seg-btn {
@@ -513,6 +532,7 @@
       white-space: nowrap;
       transition: all 0.2s ease;
       font-family: inherit;
+      flex-shrink: 0;
     }
 
     .seg-btn.active {
@@ -539,6 +559,7 @@
       box-shadow: var(--shadow-sm);
       transition: transform 0.22s ease, box-shadow 0.22s ease;
       position: relative;
+      min-width: 0;
     }
 
     .book-card:hover {
@@ -653,12 +674,16 @@
       flex-direction: column;
       gap: 4px;
       flex: 1;
+      min-width: 0;
     }
 
     .book-cat-tag {
       font-size: 0.72rem;
       font-weight: 700;
       color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .book-title {
@@ -674,6 +699,9 @@
     .book-author {
       font-size: 0.8rem;
       color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .book-desc {
@@ -691,10 +719,12 @@
       gap: 8px;
       margin-top: auto;
       padding-top: 6px;
+      flex-wrap: wrap;
     }
 
     .book-actions .btn {
       flex: 1;
+      min-width: 0;
     }
 
     /* Open Source Search Bar */
@@ -823,6 +853,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .form-group {
@@ -872,6 +903,29 @@
     .palette-swatch.selected {
       border-color: var(--text-primary);
       transform: scale(1.08);
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background: var(--bg-base);
+      border: 1px solid var(--card-border);
+      margin-bottom: 10px;
+    }
+
+    .switch-row strong {
+      display: block;
+      font-size: 0.86rem;
+    }
+
+    .switch-row span {
+      display: block;
+      font-size: 0.76rem;
+      color: var(--text-secondary);
     }
 
     /* Fullscreen Reader */
@@ -929,6 +983,7 @@
       display: grid;
       grid-template-columns: 1fr 300px;
       overflow: hidden;
+      min-height: 0;
     }
 
     .reader-canvas {
@@ -936,6 +991,7 @@
       padding: 32px 24px 90px;
       display: flex;
       justify-content: center;
+      -webkit-overflow-scrolling: touch;
     }
 
     .reader-paper {
@@ -965,7 +1021,7 @@
     .reader-pdf-frame {
       width: 100%;
       height: 100%;
-      min-height: 75vh;
+      min-height: 72vh;
       border: none;
       border-radius: var(--radius-lg);
       background: #fff;
@@ -979,6 +1035,7 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* Floating Stabilo Toolbar */
@@ -993,6 +1050,7 @@
       display: none;
       align-items: center;
       gap: 8px;
+      max-width: calc(100vw - 24px);
     }
 
     .stabilo-popover.show {
@@ -1005,6 +1063,7 @@
       border-radius: 50%;
       border: 2px solid #fff;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .hl-yellow { background: #fde047; }
@@ -1133,7 +1192,7 @@
       user-select: none;
     }
 
-    /* Mobile Responsive Refinements */
+    /* Tablet & Mobile Responsive Refinements */
     @media (max-width: 960px) {
       .app-container {
         grid-template-columns: 1fr;
@@ -1171,17 +1230,53 @@
       .reader-sidepanel {
         border-left: none;
         border-top: 1px solid var(--card-border);
-        max-height: 240px;
+        max-height: 220px;
+        padding: 14px 16px;
       }
     }
 
     @media (max-width: 640px) {
       .app-header {
-        padding: 10px 14px;
+        padding: 10px 12px;
       }
 
       .header-inner {
         flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .brand {
+        flex: 1 1 auto;
+        max-width: 100%;
+        gap: 9px;
+      }
+
+      .brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+      }
+
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        gap: 6px;
+      }
+
+      .header-actions .btn {
+        padding: 8px 11px;
+        font-size: 0.78rem;
+      }
+
+      .profile-chip {
+        padding: 4px 10px 4px 5px;
+        font-size: 0.78rem;
+        max-width: 155px;
+      }
+
+      .profile-chip-avatar {
+        width: 24px;
+        height: 24px;
       }
 
       .header-search {
@@ -1190,59 +1285,177 @@
         flex-basis: 100%;
       }
 
+      .header-search input {
+        padding: 9px 14px 9px 36px;
+        font-size: 0.85rem;
+      }
+
+      .announcement-bar {
+        margin-top: 10px;
+        padding: 0 12px;
+      }
+
+      .announcement-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px 12px;
+        gap: 8px;
+        font-size: 0.8rem;
+      }
+
+      .app-container {
+        padding: 12px 12px 44px;
+        gap: 12px;
+      }
+
+      .glass-card {
+        padding: 14px;
+        border-radius: 18px;
+      }
+
+      .visitor-count {
+        font-size: 1.55rem;
+      }
+
       .brand-title {
-        font-size: 0.96rem;
+        font-size: 0.94rem;
       }
 
       .brand-sub {
-        font-size: 0.7rem;
-      }
-
-      .btn-label-hide-sm {
-        display: none;
+        font-size: 0.69rem;
       }
 
       .hero-panel {
-        padding: 18px;
+        padding: 16px;
+        border-radius: 18px;
+        gap: 14px;
       }
 
       .hero-copy h1 {
-        font-size: 1.25rem;
+        font-size: 1.18rem;
+      }
+
+      .hero-copy p {
+        font-size: 0.82rem;
       }
 
       .hero-stats {
         width: 100%;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
       }
 
       .stat-pill {
         min-width: 0;
         padding: 8px 6px;
+        border-radius: 12px;
+      }
+
+      .stat-pill strong {
+        font-size: 1.05rem;
+      }
+
+      .stat-pill span {
+        font-size: 0.68rem;
+      }
+
+      .seg-btn {
+        padding: 7px 12px;
+        font-size: 0.78rem;
+      }
+
+      .opensource-toolbar {
+        padding: 13px 14px;
+        border-radius: 18px;
+      }
+
+      .opensource-search-row input,
+      .opensource-search-row select,
+      .opensource-search-row .btn {
+        width: 100%;
+        min-width: 0;
       }
 
       .books-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
       }
 
       .book-cover-wrap {
-        height: 155px;
+        height: 145px;
         padding: 10px;
       }
 
+      .cover-title-box h4 {
+        font-size: 0.82rem;
+      }
+
+      .cover-title-box p {
+        font-size: 0.68rem;
+      }
+
       .book-card {
-        padding: 11px;
+        padding: 10px;
+        border-radius: 16px;
+        gap: 9px;
+      }
+
+      .book-title {
+        font-size: 0.88rem;
+      }
+
+      .book-author,
+      .book-desc {
+        font-size: 0.74rem;
+      }
+
+      .book-actions .btn {
+        padding: 6px 8px;
+        font-size: 0.74rem;
+      }
+
+      .modal-box {
+        padding: 18px 16px;
         border-radius: 18px;
       }
 
+      .reader-topbar {
+        padding: 8px 12px;
+      }
+
+      .reader-canvas {
+        padding: 14px 12px 70px;
+      }
+
       .reader-paper {
-        padding: 22px 18px;
-        font-size: 0.98rem;
+        padding: 18px 14px;
+        font-size: 0.94rem;
+        line-height: 1.75;
+        border-radius: 16px;
+      }
+
+      .reader-paper p {
+        text-align: left;
       }
 
       .profile-stats-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .app-footer {
+        padding: 16px 14px 32px;
+        font-size: 0.75rem;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .toast {
+        bottom: 14px;
+        right: 14px;
+        left: 14px;
+        text-align: center;
+        font-size: 0.8rem;
       }
     }
   </style>
@@ -1253,7 +1466,7 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-logo" aria-hidden="true">
+        <div class="brand-logo" id="site-logo-box" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -1292,7 +1505,7 @@
   <div class="announcement-bar" id="announcement-wrapper">
     <div class="announcement-inner">
       <span id="announcement-text">📢 Selamat datang di Perpustakaan Digital IAD Paser. Jelajahi koleksi literasi lokal dan katalog terbuka dunia.</span>
-      <button class="btn btn-glass btn-sm" onclick="switchMainTab('opensource')">Jelajahi Open-Source</button>
+      <button class="btn btn-glass btn-sm" id="announcement-os-btn" onclick="switchMainTab('opensource')">Jelajahi Open-Source</button>
     </div>
   </div>
 
@@ -1377,7 +1590,7 @@
         <div class="books-grid" id="catalog-grid"></div>
       </section>
 
-      <!-- TAB 2: Katalog Open-Source (Gutendex + Open Library + Curated Instant-Read) -->
+      <!-- TAB 2: Katalog Open-Source -->
       <section id="view-opensource" style="display:none;">
         <div class="opensource-toolbar">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -1433,7 +1646,7 @@
     </div>
   </footer>
 
-  <!-- MODAL: Login Google (Clean Manual Form - Zero Auto-Login) -->
+  <!-- MODAL: Login Google -->
   <div class="modal-backdrop" id="modal-google-login">
     <div class="modal-box" style="max-width:430px;">
       <div class="modal-header">
@@ -1500,9 +1713,9 @@
         <div class="form-group">
           <label>File E-Book (.PDF atau .TXT)</label>
           <input type="file" id="up-file" class="form-control" accept=".pdf,.txt,application/pdf,text/plain" required />
-          <small style="color:var(--text-secondary); font-size:0.76rem;">File disimpan secara persisten dan disinkronkan ke cloud database.</small>
+          <small id="up-file-help" style="color:var(--text-secondary); font-size:0.76rem;">File disimpan secara persisten dan disinkronkan ke cloud database.</small>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; padding:11px;">Kirim ke Antrean Moderasi</button>
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:11px;" id="up-submit-btn">Kirim ke Antrean Moderasi</button>
       </form>
     </div>
   </div>
@@ -1518,7 +1731,7 @@
     </div>
   </div>
 
-  <!-- MODAL: Private Management Auth (Hidden from regular users) -->
+  <!-- MODAL: Private Management Auth -->
   <div class="modal-backdrop" id="modal-private-auth">
     <div class="modal-box" style="max-width:410px;">
       <div class="modal-header">
@@ -1610,6 +1823,13 @@
        1. STATE, CONSTANTS, FIREBASE CLOUD URL & STORAGE KEYS
        ========================================================================= */
     const DEFAULT_CLOUD_DB_URL = "https://perpustakaan-iad-paser-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    const DEFAULT_LOGO_SVG = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+    `;
 
     const CATEGORIES = [
       "Semua Kategori",
@@ -1810,9 +2030,17 @@
         subtitle: "Ikatan Adhyaksa Dharmakarini Daerah Paser",
         heroHeading: "Ruang Baca & Literasi Digital IAD Paser",
         announcement: "📢 Selamat datang di Perpustakaan Digital IAD Paser. Jelajahi koleksi literasi lokal dan katalog terbuka dunia.",
+        logoDataUrl: "",
+        logoEmoji: "",
         accentColor: "#0071e3",
         gridMin: "230px",
-        darkMode: false
+        darkMode: false,
+        systemConfig: {
+          autoApproveUploads: false,
+          maxPdfSizeMb: 4.5,
+          showAnnouncement: true,
+          enableOpenSourceTab: true
+        }
       },
       activeBook: null,
       openSourceResults: [...CURATED_OPENSOURCE_BOOKS],
@@ -1844,8 +2072,13 @@
             subtitle: appState.siteConfig.subtitle,
             heroHeading: appState.siteConfig.heroHeading,
             announcement: appState.siteConfig.announcement,
+            logoDataUrl: appState.siteConfig.logoDataUrl || "",
+            logoEmoji: appState.siteConfig.logoEmoji || "",
             accentColor: appState.siteConfig.accentColor,
-            gridMin: appState.siteConfig.gridMin
+            gridMin: appState.siteConfig.gridMin,
+            systemConfig: {
+              ...(appState.siteConfig.systemConfig || {})
+            }
           },
           updatedAt: Date.now()
         };
@@ -1889,7 +2122,11 @@
             appState.siteConfig = {
               ...appState.siteConfig,
               ...cloudData.siteConfig,
-              darkMode: appState.siteConfig.darkMode
+              darkMode: appState.siteConfig.darkMode,
+              systemConfig: {
+                ...(appState.siteConfig.systemConfig || {}),
+                ...((cloudData.siteConfig && cloudData.siteConfig.systemConfig) || {})
+              }
             };
           }
 
@@ -1908,7 +2145,6 @@
           }
           setCloudStatus("Cloud Aktif", true);
         } else {
-          // Database Firebase masih kosong (: null), isi otomatis dengan data awal
           if (!sessionStorage.getItem("iad_visit_counted")) {
             appState.visitorCount += 1;
             sessionStorage.setItem("iad_visit_counted", "1");
@@ -2032,7 +2268,14 @@
 
         const savedConfig = JSON.parse(localStorage.getItem("iad_config_v1"));
         if (savedConfig && typeof savedConfig === "object") {
-          appState.siteConfig = { ...appState.siteConfig, ...savedConfig };
+          appState.siteConfig = {
+            ...appState.siteConfig,
+            ...savedConfig,
+            systemConfig: {
+              ...(appState.siteConfig.systemConfig || {}),
+              ...(savedConfig.systemConfig || {})
+            }
+          };
         }
 
         const savedSession = JSON.parse(sessionStorage.getItem("iad_session_v1"));
@@ -2072,14 +2315,63 @@
       }
     }
 
+    function renderBrandLogo() {
+      const box = document.getElementById("site-logo-box");
+      if (!box) return;
+      if (appState.siteConfig.logoDataUrl) {
+        box.style.background = "transparent";
+        box.style.boxShadow = "none";
+        box.innerHTML = `<img src="${appState.siteConfig.logoDataUrl}" alt="Logo Website" />`;
+      } else if (appState.siteConfig.logoEmoji) {
+        box.style.background = "linear-gradient(135deg, var(--accent), #5856d6)";
+        box.style.boxShadow = "0 6px 18px rgba(0, 113, 227, 0.28)";
+        box.innerHTML = `<span style="font-size:1.25rem; line-height:1;">${escapeHtml(appState.siteConfig.logoEmoji)}</span>`;
+      } else {
+        box.style.background = "linear-gradient(135deg, var(--accent), #5856d6)";
+        box.style.boxShadow = "0 6px 18px rgba(0, 113, 227, 0.28)";
+        box.innerHTML = DEFAULT_LOGO_SVG;
+      }
+    }
+
     function applySiteConfig() {
       const c = appState.siteConfig;
+      const sys = c.systemConfig || {};
+      document.title = c.title || "Perpustakaan Digital IAD Paser";
       document.getElementById("site-main-title").textContent = c.title;
       document.getElementById("site-sub-title").textContent = c.subtitle;
       document.getElementById("hero-heading").textContent = c.heroHeading;
       document.getElementById("announcement-text").textContent = c.announcement;
       document.documentElement.style.setProperty("--accent", c.accentColor);
       document.documentElement.style.setProperty("--grid-min", c.gridMin);
+      renderBrandLogo();
+
+      const bannerWrap = document.getElementById("announcement-wrapper");
+      if (bannerWrap) {
+        bannerWrap.style.display = sys.showAnnouncement === false ? "none" : "block";
+      }
+
+      const osTabBtn = document.getElementById("tab-btn-opensource");
+      const osBannerBtn = document.getElementById("announcement-os-btn");
+      const osEnabled = sys.enableOpenSourceTab !== false;
+      if (osTabBtn) osTabBtn.style.display = osEnabled ? "" : "none";
+      if (osBannerBtn) osBannerBtn.style.display = osEnabled ? "" : "none";
+      if (!osEnabled && appState.currentTab === "opensource") {
+        switchMainTab("catalog");
+      }
+
+      const maxMb = Number(sys.maxPdfSizeMb) || 4.5;
+      const fileHelp = document.getElementById("up-file-help");
+      if (fileHelp) {
+        fileHelp.textContent = `Maksimal ukuran PDF ${maxMb} MB. File disimpan secara persisten dan disinkronkan ke cloud database.`;
+      }
+
+      const isPrivileged = appState.session && (appState.session.role === "admin" || appState.session.role === "superadmin");
+      const autoApprove = isPrivileged || Boolean(sys.autoApproveUploads);
+      const upBtn = document.getElementById("up-submit-btn");
+      if (upBtn) {
+        upBtn.textContent = autoApprove ? "Terbitkan E-Book Langsung" : "Kirim ke Antrean Moderasi";
+      }
+
       if (c.darkMode) {
         document.body.classList.add("dark-mode");
         document.getElementById("theme-icon").textContent = "☀️";
@@ -2130,7 +2422,7 @@
 
       if (!appState.session) {
         slot.innerHTML = `
-          <button class="btn btn-glass" onclick="openModal('modal-google-login')">
+          <button class="btn btn-glass btn-sm" onclick="openModal('modal-google-login')">
             <span>Masuk Google</span>
           </button>
         `;
@@ -2141,9 +2433,9 @@
       const key = getAccountKey();
       const prof = getUserProfile(key);
       const roleTag = appState.session.role === "superadmin"
-        ? "👑 Super Admin"
+        ? "Super Admin"
         : appState.session.role === "admin"
-        ? "🛡️ Admin"
+        ? "Admin"
         : "Google";
 
       const avatarHtml = prof.photoDataUrl
@@ -2153,8 +2445,8 @@
       slot.innerHTML = `
         <button class="profile-chip" onclick="openProfileModal()" title="Buka Profil Literatur">
           <span class="profile-chip-avatar">${avatarHtml}</span>
-          <span>${escapeHtml(prof.displayName)}</span>
-          <span style="font-size:0.7rem; color:var(--accent);">(${roleTag})</span>
+          <span class="profile-chip-name">${escapeHtml(prof.displayName)}</span>
+          <span style="font-size:0.68rem; color:var(--accent); flex-shrink:0;">(${roleTag})</span>
         </button>
       `;
 
@@ -2612,6 +2904,7 @@
         showToast("Silakan masuk dengan akun Google terlebih dahulu");
         return;
       }
+      applySiteConfig();
       renderPalettePicker();
       openModal("modal-upload");
     }
@@ -2668,10 +2961,11 @@
 
       const newId = "book-" + Date.now();
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const maxMb = Number((appState.siteConfig.systemConfig && appState.siteConfig.systemConfig.maxPdfSizeMb) || 4.5);
 
       if (isPdf) {
-        if (file.size > 4.5 * 1024 * 1024) {
-          showToast("Ukuran file PDF maksimal 4.5 MB agar sinkronisasi cloud optimal.");
+        if (file.size > maxMb * 1024 * 1024) {
+          showToast(`Ukuran file PDF maksimal ${maxMb} MB.`);
           return;
         }
         const reader = new FileReader();
@@ -2689,7 +2983,8 @@
     }
 
     function finalizeBookSubmission(id, title, author, category, description, type, content) {
-      const autoApprove = appState.session.role === "admin" || appState.session.role === "superadmin";
+      const isPrivileged = appState.session.role === "admin" || appState.session.role === "superadmin";
+      const autoApprove = isPrivileged || Boolean(appState.siteConfig.systemConfig && appState.siteConfig.systemConfig.autoApproveUploads);
       appState.books.unshift({
         id,
         title,
@@ -2925,6 +3220,7 @@
       }
 
       const isSuper = appState.session.role === "superadmin";
+      const sys = appState.siteConfig.systemConfig || {};
       document.getElementById("mgmt-panel-title").textContent = isSuper
         ? "👑 Panel Kontrol Super Admin"
         : "🛡️ Panel Moderasi Admin";
@@ -2964,11 +3260,71 @@
             </div>
           `).join("")}
         </div>
+
+        <div class="glass-card" style="margin-bottom:16px;">
+          <h4 style="margin-bottom:10px;">🎨 Pengaturan Identitas & Logo Website</h4>
+          <div class="form-group">
+            <label>Judul Website</label>
+            <input type="text" id="adm-cfg-title" class="form-control" value="${escapeHtml(appState.siteConfig.title)}" />
+          </div>
+          <div class="form-group">
+            <label>Teks Pengumuman Banner</label>
+            <input type="text" id="adm-cfg-banner" class="form-control" value="${escapeHtml(appState.siteConfig.announcement)}" />
+          </div>
+          <div class="form-group">
+            <label>Unggah Gambar Logo Website (PNG / JPG / SVG)</label>
+            <input type="file" id="adm-logo-file" accept="image/*" class="form-control" onchange="handleAdminLogoUpload(event)" />
+          </div>
+          <div class="form-group">
+            <label>Atau Pilih Ikon Logo Cepat</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              ${["📖", "🏛️", "⚖️", "🌟", "🌺"].map(ic => `
+                <button type="button" class="btn btn-glass btn-sm" onclick="applyQuickLogoIcon('${ic}')">${ic}</button>
+              `).join("")}
+              <button type="button" class="btn btn-glass btn-sm" onclick="resetLogoToDefault()">Reset Logo Bawaan</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveAdminIdentitySettings()">Simpan Judul, Pengumuman & Logo</button>
+        </div>
       `;
 
       /* Exclusive Super Admin Controls */
       if (isSuper) {
         html += `
+          <div class="glass-card" style="margin-bottom:16px; border:1px solid var(--accent);">
+            <h4 style="margin-bottom:10px;">⚙️ Pengaturan Sistem Website (Khusus Super Admin)</h4>
+            <div class="switch-row">
+              <div>
+                <strong>Terbitkan Unggahan E-Book Otomatis</strong>
+                <span>Jika aktif, buku yang diunggah pengguna langsung tayang tanpa menunggu antrean moderasi.</span>
+              </div>
+              <input type="checkbox" id="sys-auto-approve" ${sys.autoApproveUploads ? "checked" : ""} />
+            </div>
+            <div class="switch-row">
+              <div>
+                <strong>Tampilkan Banner Pengumuman</strong>
+                <span>Menampilkan atau menyembunyikan baris pengumuman di atas halaman.</span>
+              </div>
+              <input type="checkbox" id="sys-show-banner" ${sys.showAnnouncement !== false ? "checked" : ""} />
+            </div>
+            <div class="switch-row">
+              <div>
+                <strong>Aktifkan Tab Katalog Open-Source</strong>
+                <span>Mengaktifkan atau menonaktifkan akses katalog buku domain publik internasional.</span>
+              </div>
+              <input type="checkbox" id="sys-enable-os" ${sys.enableOpenSourceTab !== false ? "checked" : ""} />
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+              <label>Batas Maksimal Ukuran File PDF (MB)</label>
+              <input type="number" id="sys-max-pdf" class="form-control" step="0.5" min="1" max="20" value="${Number(sys.maxPdfSizeMb) || 4.5}" />
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="saveSuperAdminSystemSettings()">Simpan Pengaturan Sistem</button>
+              <button class="btn btn-glass btn-sm" onclick="forceSyncFirebaseNow()">☁️ Sinkronkan ke Firebase</button>
+              <button class="btn btn-danger btn-sm" onclick="resetDefaultCatalogSystem()">Reset Koleksi Bawaan</button>
+            </div>
+          </div>
+
           <div class="glass-card" style="margin-bottom:16px; border:1px solid var(--accent);">
             <h4 style="margin-bottom:10px;">🔐 Manajemen Akun Admin (Khusus Super Admin)</h4>
             <form onsubmit="createAdminAccount(event)" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px; margin-bottom:12px;">
@@ -2991,7 +3347,7 @@
           </div>
 
           <div class="glass-card" style="border:1px solid var(--accent);">
-            <h4 style="margin-bottom:10px;">🎨 Kustomisasi Tampilan Website (Khusus Super Admin)</h4>
+            <h4 style="margin-bottom:10px;">🖌️ Kustomisasi Tampilan Website (Khusus Super Admin)</h4>
             <div class="form-group">
               <label>Judul Utama Website</label>
               <input type="text" id="cfg-title" class="form-control" value="${escapeHtml(appState.siteConfig.title)}" />
@@ -3025,6 +3381,87 @@
 
       document.getElementById("mgmt-panel-body").innerHTML = html;
       openModal("modal-management");
+    }
+
+    function handleAdminLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 1.5 * 1024 * 1024) {
+        showToast("Ukuran file logo maksimal 1.5 MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        appState.siteConfig.logoDataUrl = ev.target.result;
+        appState.siteConfig.logoEmoji = "";
+        persistAll(true);
+        renderAll();
+        openManagementPanel();
+        showToast("Logo website diperbarui");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function applyQuickLogoIcon(icon) {
+      appState.siteConfig.logoEmoji = icon;
+      appState.siteConfig.logoDataUrl = "";
+      persistAll(true);
+      renderAll();
+      openManagementPanel();
+      showToast(`Ikon logo diubah menjadi ${icon}`);
+    }
+
+    function resetLogoToDefault() {
+      appState.siteConfig.logoEmoji = "";
+      appState.siteConfig.logoDataUrl = "";
+      persistAll(true);
+      renderAll();
+      openManagementPanel();
+      showToast("Logo dikembalikan ke bawaan");
+    }
+
+    function saveAdminIdentitySettings() {
+      if (!appState.session || (appState.session.role !== "admin" && appState.session.role !== "superadmin")) {
+        return;
+      }
+      const titleEl = document.getElementById("adm-cfg-title");
+      const bannerEl = document.getElementById("adm-cfg-banner");
+      if (titleEl && titleEl.value.trim()) appState.siteConfig.title = titleEl.value.trim();
+      if (bannerEl && bannerEl.value.trim()) appState.siteConfig.announcement = bannerEl.value.trim();
+      persistAll(true);
+      renderAll();
+      openManagementPanel();
+      showToast("Judul web, pengumuman & logo berhasil disimpan");
+    }
+
+    function saveSuperAdminSystemSettings() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      const maxVal = parseFloat(document.getElementById("sys-max-pdf").value);
+      appState.siteConfig.systemConfig = {
+        autoApproveUploads: Boolean(document.getElementById("sys-auto-approve").checked),
+        showAnnouncement: Boolean(document.getElementById("sys-show-banner").checked),
+        enableOpenSourceTab: Boolean(document.getElementById("sys-enable-os").checked),
+        maxPdfSizeMb: !Number.isNaN(maxVal) && maxVal > 0 ? maxVal : 4.5
+      };
+      persistAll(true);
+      renderAll();
+      openManagementPanel();
+      showToast("Pengaturan sistem berhasil disimpan");
+    }
+
+    async function forceSyncFirebaseNow() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      await pushStateToFirebase();
+      showToast("Data berhasil disinkronkan ke Firebase");
+    }
+
+    function resetDefaultCatalogSystem() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      appState.books = [...DEFAULT_BOOKS];
+      persistAll(true);
+      renderAll();
+      openManagementPanel();
+      showToast("Koleksi buku dikembalikan ke data awal");
     }
 
     function approveBook(id) {
@@ -3112,6 +3549,9 @@
     }
 
     function switchMainTab(tab) {
+      if (tab === "opensource" && appState.siteConfig.systemConfig && appState.siteConfig.systemConfig.enableOpenSourceTab === false) {
+        tab = "catalog";
+      }
       appState.currentTab = tab;
       ["catalog", "opensource", "history"].forEach(t => {
         document.getElementById(`view-${t}`).style.display = t === tab ? "block" : "none";
