@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>Perpustakaan Digital IAD Paser</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     :root {
       --bg-base: #f5f5f7;
@@ -345,7 +346,7 @@
     }
 
     .live-dot {
-      display: inline-flex;
+      display: none !important;
       align-items: center;
       gap: 5px;
       font-size: 0.72rem;
@@ -353,12 +354,16 @@
       color: var(--success);
     }
 
+    .live-dot.visible-superadmin {
+      display: inline-flex !important;
+    }
+
     .live-dot::before {
       content: "";
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--success);
+      background: currentColor;
       box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.22);
     }
 
@@ -885,6 +890,12 @@
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
+    textarea.code-editor-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
     .palette-row {
       display: flex;
       gap: 10px;
@@ -996,7 +1007,7 @@
 
     .reader-paper {
       width: 100%;
-      max-width: 740px;
+      max-width: 780px;
       background: var(--glass-bg-strong);
       border: 1px solid var(--card-border);
       border-radius: var(--radius-xl);
@@ -1018,10 +1029,33 @@
       text-align: justify;
     }
 
+    .scan-page-card {
+      margin-bottom: 20px;
+      padding: 12px;
+      border-radius: 14px;
+      background: var(--bg-base);
+      border: 1px solid var(--card-border);
+      text-align: center;
+    }
+
+    .scan-page-card canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scan-page-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
     .reader-pdf-frame {
       width: 100%;
-      height: 100%;
-      min-height: 72vh;
+      height: 75vh;
+      min-height: 520px;
       border: none;
       border-radius: var(--radius-lg);
       background: #fff;
@@ -1459,6 +1493,7 @@
       }
     }
   </style>
+  <style id="gemini-dynamic-css"></style>
 </head>
 <body>
 
@@ -1711,9 +1746,9 @@
           <div class="palette-row" id="cover-palette-picker"></div>
         </div>
         <div class="form-group">
-          <label>File E-Book (.PDF atau .TXT)</label>
+          <label>File E-Book (.PDF termasuk hasil scan gambar, atau .TXT)</label>
           <input type="file" id="up-file" class="form-control" accept=".pdf,.txt,application/pdf,text/plain" required />
-          <small id="up-file-help" style="color:var(--text-secondary); font-size:0.76rem;">File disimpan secara persisten dan disinkronkan ke cloud database.</small>
+          <small id="up-file-help" style="color:var(--text-secondary); font-size:0.76rem;">Mendukung PDF non-teks / hasil scan gambar. File disimpan secara persisten dan disinkronkan ke cloud database.</small>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%; padding:11px;" id="up-submit-btn">Kirim ke Antrean Moderasi</button>
       </form>
@@ -1819,6 +1854,37 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    /* =========================================================================
+       0. RUNTIME GUARD & STATE INTEGRITY RECOVERY
+       ========================================================================= */
+    if (window.pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+
+    let lastRecoveryToastAt = 0;
+    function notifyAutoRecovery(msg) {
+      const now = Date.now();
+      if (now - lastRecoveryToastAt > 4000) {
+        lastRecoveryToastAt = now;
+        if (typeof showToast === "function") showToast(msg);
+      }
+    }
+
+    window.addEventListener("error", (ev) => {
+      if (ev && ev.message && ev.message.includes("Script error")) return;
+      if (!appState || !Array.isArray(appState.books)) {
+        loadState();
+        if (typeof renderAll === "function") renderAll();
+        notifyAutoRecovery("Struktur state dipulihkan otomatis.");
+      }
+    });
+
+    window.addEventListener("unhandledrejection", () => {
+      if (typeof updateCloudIndicatorVisibility === "function") {
+        updateCloudIndicatorVisibility();
+      }
+    });
+
     /* =========================================================================
        1. STATE, CONSTANTS, FIREBASE CLOUD URL & STORAGE KEYS
        ========================================================================= */
@@ -2035,9 +2101,11 @@
         accentColor: "#0071e3",
         gridMin: "230px",
         darkMode: false,
+        customCss: "",
+        customJs: "",
         systemConfig: {
           autoApproveUploads: false,
-          maxPdfSizeMb: 4.5,
+          maxPdfSizeMb: 12,
           showAnnouncement: true,
           enableOpenSourceTab: true
         }
@@ -2050,11 +2118,24 @@
     /* =========================================================================
        2. FIREBASE REALTIME DATABASE CLOUD SYNC ENGINE
        ========================================================================= */
+    function isSuperAdminSession() {
+      return Boolean(appState.session && appState.session.role === "superadmin");
+    }
+
+    function updateCloudIndicatorVisibility() {
+      const el = document.getElementById("cloud-sync-status");
+      if (!el) return;
+      const show = isSuperAdminSession();
+      el.classList.toggle("visible-superadmin", show);
+      el.style.display = show ? "inline-flex" : "none";
+    }
+
     function setCloudStatus(text, isOnline = true) {
       const el = document.getElementById("cloud-sync-status");
       if (!el) return;
       el.textContent = text;
       el.style.color = isOnline ? "var(--success)" : "var(--warning)";
+      updateCloudIndicatorVisibility();
     }
 
     async function pushStateToFirebase() {
@@ -2076,6 +2157,8 @@
             logoEmoji: appState.siteConfig.logoEmoji || "",
             accentColor: appState.siteConfig.accentColor,
             gridMin: appState.siteConfig.gridMin,
+            customCss: appState.siteConfig.customCss || "",
+            customJs: appState.siteConfig.customJs || "",
             systemConfig: {
               ...(appState.siteConfig.systemConfig || {})
             }
@@ -2241,8 +2324,27 @@
     }
 
     /* =========================================================================
-       4. INITIALIZATION & PERSISTENCE
+       4. INITIALIZATION, PERSISTENCE & DYNAMIC CODE STRUCTURE
        ========================================================================= */
+    let appliedCustomJsCache = "";
+
+    function applyDynamicCodeStructure() {
+      const styleTag = document.getElementById("gemini-dynamic-css");
+      if (styleTag) {
+        styleTag.textContent = appState.siteConfig.customCss || "";
+      }
+      const jsCode = (appState.siteConfig.customJs || "").trim();
+      if (jsCode && jsCode !== appliedCustomJsCache) {
+        appliedCustomJsCache = jsCode;
+        try {
+          const fn = new Function("appState", "showToast", "renderAll", jsCode);
+          fn(appState, showToast, renderAll);
+        } catch (err) {
+          console.warn("Custom code execution error:", err);
+        }
+      }
+    }
+
     function loadState() {
       try {
         const savedBooks = JSON.parse(localStorage.getItem("iad_books_v1"));
@@ -2344,6 +2446,7 @@
       document.documentElement.style.setProperty("--accent", c.accentColor);
       document.documentElement.style.setProperty("--grid-min", c.gridMin);
       renderBrandLogo();
+      updateCloudIndicatorVisibility();
 
       const bannerWrap = document.getElementById("announcement-wrapper");
       if (bannerWrap) {
@@ -2359,10 +2462,10 @@
         switchMainTab("catalog");
       }
 
-      const maxMb = Number(sys.maxPdfSizeMb) || 4.5;
+      const maxMb = Number(sys.maxPdfSizeMb) || 12;
       const fileHelp = document.getElementById("up-file-help");
       if (fileHelp) {
-        fileHelp.textContent = `Maksimal ukuran PDF ${maxMb} MB. File disimpan secara persisten dan disinkronkan ke cloud database.`;
+        fileHelp.textContent = `Maksimal ukuran PDF ${maxMb} MB (termasuk PDF scan gambar). File disimpan secara persisten dan disinkronkan ke cloud database.`;
       }
 
       const isPrivileged = appState.session && (appState.session.role === "admin" || appState.session.role === "superadmin");
@@ -2379,6 +2482,8 @@
         document.body.classList.remove("dark-mode");
         document.getElementById("theme-icon").textContent = "🌙";
       }
+
+      applyDynamicCodeStructure();
     }
 
     /* =========================================================================
@@ -2522,7 +2627,7 @@
                 ${isLiked ? "❤️" : "🤍"}
               </button>
               <div class="book-cover-overlay">
-                <span class="cover-badge">${book.type === "pdf" ? "PDF" : "E-BOOK"}</span>
+                <span class="cover-badge">${book.type === "pdf" ? "PDF SCAN / E-BOOK" : "E-BOOK"}</span>
                 <div class="cover-title-box">
                   <h4>${escapeHtml(book.title)}</h4>
                   <p>${escapeHtml(book.author)}</p>
@@ -2655,8 +2760,79 @@
     }
 
     /* =========================================================================
-       7. FULL-SCREEN READER, STABILO & WORD BOOKMARKS
+       7. FULL-SCREEN READER (INCLUDING SCANNED IMAGE PDFs), STABILO & BOOKMARKS
        ========================================================================= */
+    function dataUrlToUint8Array(dataUrl) {
+      const base64Part = (dataUrl.split(",")[1] || "").trim();
+      const binaryStr = atob(base64Part);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    async function renderPdfPagesToCanvas(pdfDataUrl, containerEl) {
+      if (!window.pdfjsLib) {
+        containerEl.innerHTML = `<iframe class="reader-pdf-frame" src="${pdfDataUrl}" title="Dokumen PDF"></iframe>`;
+        return;
+      }
+
+      try {
+        const bytes = dataUrlToUint8Array(pdfDataUrl);
+        const loadingTask = pdfjsLib.getDocument({ data: bytes });
+        const pdfDoc = await loadingTask.promise;
+        const totalPages = pdfDoc.numPages;
+
+        containerEl.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+            <span style="font-size:0.84rem; font-weight:700; color:var(--accent);">📄 PDF Hasil Scan / Gambar • ${totalPages} Halaman</span>
+            <a class="btn btn-glass btn-sm" href="${pdfDataUrl}" download="dokumen-scan.pdf">Unduh PDF</a>
+          </div>
+          <div id="pdf-scan-pages-list"></div>
+        `;
+
+        const listEl = document.getElementById("pdf-scan-pages-list");
+        const maxRenderPages = Math.min(totalPages, 35);
+
+        for (let pageNum = 1; pageNum <= maxRenderPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+          const unscaledViewport = page.getViewport({ scale: 1 });
+          const targetWidth = Math.min(680, Math.max(280, containerEl.clientWidth - 48));
+          const scale = Math.min(1.6, Math.max(0.85, targetWidth / unscaledViewport.width));
+          const viewport = page.getViewport({ scale });
+
+          const card = document.createElement("div");
+          card.className = "scan-page-card";
+
+          const label = document.createElement("div");
+          label.className = "scan-page-label";
+          label.textContent = `Halaman ${pageNum} dari ${totalPages}`;
+
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+
+          card.appendChild(label);
+          card.appendChild(canvas);
+          listEl.appendChild(card);
+
+          await page.render({ canvasContext: ctx, viewport }).promise;
+        }
+
+        if (totalPages > maxRenderPages) {
+          const notice = document.createElement("p");
+          notice.style.cssText = "font-size:0.82rem; color:var(--text-secondary); text-align:center;";
+          notice.textContent = `Menampilkan ${maxRenderPages} halaman awal agar tetap ringan. Gunakan tombol Unduh PDF untuk membuka seluruh ${totalPages} halaman.`;
+          listEl.appendChild(notice);
+        }
+      } catch (err) {
+        containerEl.innerHTML = `<iframe class="reader-pdf-frame" src="${pdfDataUrl}" title="Dokumen PDF"></iframe>`;
+      }
+    }
+
     async function openBookReader(bookId, sourceType) {
       let book = sourceType === "opensource"
         ? appState.openSourceResults.find(b => b.id === bookId)
@@ -2679,7 +2855,7 @@
 
       const area = document.getElementById("reader-content-area");
       if (book.type === "pdf") {
-        area.innerHTML = `<p style="text-align:center; color:var(--text-secondary);">Memuat dokumen PDF...</p>`;
+        area.innerHTML = `<p style="text-align:center; color:var(--text-secondary);">Memuat halaman dokumen PDF (termasuk hasil scan gambar)...</p>`;
         document.getElementById("reader-overlay").classList.add("open");
         let pdfDataUrl = await getBlobFromIDB(`pdf_${book.id}`);
         if (!pdfDataUrl) {
@@ -2689,9 +2865,9 @@
           }
         }
         if (pdfDataUrl) {
-          area.innerHTML = `<iframe class="reader-pdf-frame" src="${pdfDataUrl}" title="${escapeHtml(book.title)}"></iframe>`;
+          await renderPdfPagesToCanvas(pdfDataUrl, area);
         } else {
-          area.innerHTML = `<p>File PDF tidak tersedia atau melebihi batas penyimpanan.</p>`;
+          area.innerHTML = `<p>File PDF tidak ditemukan di penyimpanan lokal maupun cloud.</p>`;
         }
       } else {
         const paragraphs = Array.isArray(book.content) ? book.content : [String(book.content || book.description)];
@@ -2961,7 +3137,7 @@
 
       const newId = "book-" + Date.now();
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-      const maxMb = Number((appState.siteConfig.systemConfig && appState.siteConfig.systemConfig.maxPdfSizeMb) || 4.5);
+      const maxMb = Number((appState.siteConfig.systemConfig && appState.siteConfig.systemConfig.maxPdfSizeMb) || 12);
 
       if (isPdf) {
         if (file.size > maxMb * 1024 * 1024) {
@@ -3157,7 +3333,7 @@
     }
 
     /* =========================================================================
-       11. ULTRA-PRIVATE ADMIN & SUPER ADMIN ACCESS
+       11. ULTRA-PRIVATE ADMIN & SUPER ADMIN ACCESS + GEMINI AI CODE EDITOR
        ========================================================================= */
     let secretTapCount = 0;
     let secretTapTimer = null;
@@ -3221,6 +3397,7 @@
 
       const isSuper = appState.session.role === "superadmin";
       const sys = appState.siteConfig.systemConfig || {};
+      const savedGeminiKey = sessionStorage.getItem("iad_gemini_key") || "";
       document.getElementById("mgmt-panel-title").textContent = isSuper
         ? "👑 Panel Kontrol Super Admin"
         : "🛡️ Panel Moderasi Admin";
@@ -3292,6 +3469,34 @@
       if (isSuper) {
         html += `
           <div class="glass-card" style="margin-bottom:16px; border:1px solid var(--accent);">
+            <h4 style="margin-bottom:6px;">🤖 Ubah Struktur Coding dengan Gemini AI (Khusus Super Admin)</h4>
+            <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:12px;">
+              Masukkan Gemini API Key, tulis instruksi perubahan struktur tampilan/logika, lalu hasilkan & terapkan struktur CSS/JS secara langsung.
+            </p>
+            <div class="form-group">
+              <label>Gemini API Key (Disimpan di sesi browser saat ini)</label>
+              <input type="password" id="gemini-api-key-input" class="form-control" placeholder="AIza..." value="${escapeHtml(savedGeminiKey)}" />
+            </div>
+            <div class="form-group">
+              <label>Instruksi Perubahan Struktur Kode</label>
+              <textarea id="gemini-prompt-input" class="form-control" rows="2" placeholder="Contoh: Buat kartu buku sedikit membulat di sudut atas, beri border halus pada hero-panel, dan tampilkan toast sambutan saat dimuat."></textarea>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="generateStructureWithGemini()">✨ Buat Struktur Kode via Gemini AI</button>
+              <button type="button" class="btn btn-glass btn-sm" onclick="applyCustomCodeStructure()">Terapkan Kode di Bawah</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="resetCustomCodeStructure()">Reset Struktur Kustom</button>
+            </div>
+            <div class="form-group">
+              <label>Struktur CSS Kustom</label>
+              <textarea id="gemini-custom-css" class="form-control code-editor-box" rows="5" placeholder="/* CSS struktur tambahan */">${escapeHtml(appState.siteConfig.customCss || "")}</textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Struktur JS Kustom (berjalan saat halaman/config diperbarui)</label>
+              <textarea id="gemini-custom-js" class="form-control code-editor-box" rows="5" placeholder="// JavaScript struktur tambahan">${escapeHtml(appState.siteConfig.customJs || "")}</textarea>
+            </div>
+          </div>
+
+          <div class="glass-card" style="margin-bottom:16px; border:1px solid var(--accent);">
             <h4 style="margin-bottom:10px;">⚙️ Pengaturan Sistem Website (Khusus Super Admin)</h4>
             <div class="switch-row">
               <div>
@@ -3316,7 +3521,7 @@
             </div>
             <div class="form-group" style="margin-top:10px;">
               <label>Batas Maksimal Ukuran File PDF (MB)</label>
-              <input type="number" id="sys-max-pdf" class="form-control" step="0.5" min="1" max="20" value="${Number(sys.maxPdfSizeMb) || 4.5}" />
+              <input type="number" id="sys-max-pdf" class="form-control" step="0.5" min="1" max="50" value="${Number(sys.maxPdfSizeMb) || 12}" />
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-primary btn-sm" onclick="saveSuperAdminSystemSettings()">Simpan Pengaturan Sistem</button>
@@ -3383,6 +3588,104 @@
       openModal("modal-management");
     }
 
+    async function generateStructureWithGemini() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      const apiKey = (document.getElementById("gemini-api-key-input")?.value || "").trim();
+      const instruction = (document.getElementById("gemini-prompt-input")?.value || "").trim();
+
+      if (!apiKey) {
+        showToast("Masukkan Gemini API Key terlebih dahulu");
+        return;
+      }
+      if (!instruction) {
+        showToast("Tuliskan instruksi perubahan struktur kode");
+        return;
+      }
+
+      sessionStorage.setItem("iad_gemini_key", apiKey);
+      showToast("Menghubungi Gemini AI...");
+
+      try {
+        const systemPrompt = `Kamu adalah asisten pengembang frontend untuk aplikasi web Perpustakaan Digital IAD Paser (vanilla HTML/CSS/JS).
+Balas HANYA dengan objek JSON valid tanpa markdown fence, dengan struktur:
+{"css":"...","js":"...","note":"..."}
+Aturan:
+- "css": aturan CSS tambahan yang aman untuk menata elemen halaman (.hero-panel, .book-card, .app-header, dll).
+- "js": kode JS singkat yang aman (tersedia parameter appState, showToast, renderAll), tanpa memanggil eval atau menghapus event listener inti.
+- "note": ringkasan singkat perubahan dalam bahasa Indonesia.`;
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: `${systemPrompt}\n\nInstruksi Super Admin: ${instruction}` }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+        const parsed = JSON.parse(cleaned);
+
+        const cssBox = document.getElementById("gemini-custom-css");
+        const jsBox = document.getElementById("gemini-custom-js");
+
+        if (typeof parsed.css === "string" && cssBox) {
+          cssBox.value = parsed.css;
+        }
+        if (typeof parsed.js === "string" && jsBox) {
+          jsBox.value = parsed.js;
+        }
+
+        applyCustomCodeStructure();
+        showToast(parsed.note || "Struktur kode dari Gemini AI siap & diterapkan");
+      } catch (err) {
+        showToast("Gagal memanggil Gemini AI. Periksa API Key atau koneksi.");
+      }
+    }
+
+    function applyCustomCodeStructure() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      const keyInput = document.getElementById("gemini-api-key-input");
+      if (keyInput && keyInput.value.trim()) {
+        sessionStorage.setItem("iad_gemini_key", keyInput.value.trim());
+      }
+      const cssVal = document.getElementById("gemini-custom-css")?.value ?? appState.siteConfig.customCss ?? "";
+      const jsVal = document.getElementById("gemini-custom-js")?.value ?? appState.siteConfig.customJs ?? "";
+
+      appState.siteConfig.customCss = cssVal;
+      appState.siteConfig.customJs = jsVal;
+      appliedCustomJsCache = "";
+      persistAll(true);
+      applySiteConfig();
+      showToast("Struktur kode kustom diterapkan");
+    }
+
+    function resetCustomCodeStructure() {
+      if (!appState.session || appState.session.role !== "superadmin") return;
+      appState.siteConfig.customCss = "";
+      appState.siteConfig.customJs = "";
+      appliedCustomJsCache = "";
+      persistAll(true);
+      applySiteConfig();
+      openManagementPanel();
+      showToast("Struktur kode kustom direset");
+    }
+
     function handleAdminLogoUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -3441,7 +3744,7 @@
         autoApproveUploads: Boolean(document.getElementById("sys-auto-approve").checked),
         showAnnouncement: Boolean(document.getElementById("sys-show-banner").checked),
         enableOpenSourceTab: Boolean(document.getElementById("sys-enable-os").checked),
-        maxPdfSizeMb: !Number.isNaN(maxVal) && maxVal > 0 ? maxVal : 4.5
+        maxPdfSizeMb: !Number.isNaN(maxVal) && maxVal > 0 ? maxVal : 12
       };
       persistAll(true);
       renderAll();
