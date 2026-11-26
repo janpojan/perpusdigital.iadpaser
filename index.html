@@ -6,6 +6,7 @@
 <title>Perpustakaan Digital IAD Paser</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{--bg:#FBFBFD;--alt:#F5F5F7;--sf:#fff;--ink:#1D1D1F;--mu:#6E6E73;--ln:#D2D2D7;--ac:#0A7C5A;--ai:#fff;--dg:#C62828;--nav:rgb(251 251 253/.74);--r1:12px;--r3:28px;
 --tx:"Inter","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--sr:"Source Serif 4",Georgia,serif;
@@ -28,12 +29,13 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 nav.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--nav);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid color-mix(in srgb,var(--ln) 60%,transparent)}
 nav.top .w{display:flex;align-items:center;gap:6px;height:56px}
 .brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;flex:1;min-width:0}
-.lg{width:30px;height:30px;border-radius:8px;background:var(--ac);color:var(--ai);display:grid;place-items:center;flex:none;overflow:hidden}
-.lg img{width:100%;height:100%;object-fit:cover}
+.lg{width:32px;height:32px;border-radius:8px;background:var(--ac);color:var(--ai);display:grid;place-items:center;flex:none;overflow:hidden}
+.lg.has-custom-logo{background:transparent;box-shadow:none;border-radius:0}
+.lg img{width:100%;height:100%;object-fit:contain;background:transparent}
 .brand b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .links{display:flex;gap:2px}.links a{color:var(--mu);text-decoration:none;font-size:14px;padding:10px 12px;border-radius:99px}.links a:hover{color:var(--ink)}
 nav .btn.ic{background:none;width:40px}
-.chip{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--alt);border-radius:99px;padding:4px 14px 4px 4px;min-height:40px;cursor:pointer;font-size:14px;font-weight:500;max-width:185px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--alt);border-radius:99px;padding:4px 14px 4px 4px;min-height:40px;cursor:pointer;font-size:14px;font-weight:500;max-width:195px}
 .chip span.n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .av{width:32px;height:32px;border-radius:50%;background:var(--ac);color:var(--ai);display:grid;place-items:center;font-weight:600;flex:none;overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}
 .ann{background:var(--alt);font-size:14px;text-align:center}.ann .w{padding-top:10px;padding-bottom:10px}.ann a{color:var(--ac);font-weight:500;text-decoration:none}
@@ -70,6 +72,7 @@ section.s{padding:88px 0 8px}.alt{background:var(--alt)}
 .bk:hover .cv{transform:translateY(-5px)}
 .lk{position:absolute;top:8px;right:8px;z-index:3;width:44px;height:44px;border-radius:50%;border:0;background:rgb(255 255 255/.88);color:#333;cursor:pointer;display:grid;place-items:center}
 .lk[aria-pressed=true]{color:#D32F2F}.lk[aria-pressed=true] svg{fill:currentColor}
+.bm-badge{position:absolute;top:10px;left:16px;z-index:3;background:rgb(0 0 0/.72);color:#fff;font-size:11px;font-weight:600;padding:4px 9px;border-radius:99px;backdrop-filter:blur(6px)}
 .bk .ct{color:var(--ac);font-size:13px;font-weight:600;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk h3{font-size:16px;line-height:1.3;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bk small{color:var(--mu);font-size:14px}.bk .ds{color:var(--mu);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}
@@ -101,18 +104,27 @@ textarea.code-box{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 .sx{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--alt);border-radius:var(--r1);padding:12px 14px;margin-bottom:8px;font-size:15px}.sx small{display:block;color:var(--mu);font-size:13px}.sx input{width:22px;height:22px;flex:none}
 .pst{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pst div{background:var(--alt);border-radius:var(--r1);padding:12px;text-align:center}.pst b{display:block;font-size:22px}.pst span{font-size:13px;color:var(--mu)}
 #rd{width:100%;height:100%;max-width:none;max-height:none;border-radius:0;margin:0;overflow:hidden;box-shadow:none}
-#rd[open]{display:grid;grid-template-columns:1fr 320px;grid-template-rows:auto 1fr}
+#rd[open]{display:grid;grid-template-columns:1fr 330px;grid-template-rows:auto 1fr}
 .rh{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 20px;background:var(--nav);backdrop-filter:blur(20px);border-bottom:1px solid var(--ln);padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .rh div{flex:1;min-width:140px}.rh h2{font-size:17px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rh small{color:var(--mu)}
-.pg{overflow:auto;padding:36px 20px}.pg article{max-width:62ch;margin:0 auto;font:400 20px/1.8 var(--sr)}.pg article p{margin:0 0 16px}
-.scan{margin-bottom:18px;padding:12px;border-radius:14px;background:var(--alt);text-align:center}.scan canvas{max-width:100%;height:auto;border-radius:8px}.scan small{display:block;color:var(--mu);margin-bottom:8px}
+.pg{overflow:auto;padding:36px 20px}.pg article{max-width:64ch;margin:0 auto;font:400 20px/1.8 var(--sr)}.pg article p{margin:0 0 16px}
+.scan{margin-bottom:20px;padding:14px;border-radius:14px;background:var(--alt);text-align:center;border:1px solid transparent;transition:border-color .2s}
+.scan.last-read-target{border-color:var(--ac)}
+.scan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--tx)}
+.scan-head small{color:var(--mu);font-size:13px;font-weight:500}
+.scan canvas{max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto}
+.scan-ocr-text{margin-top:12px;padding:14px 16px;border-radius:10px;background:var(--sf);text-align:left;font:400 16px/1.7 var(--sr);color:var(--ink);user-select:text;border:1px solid var(--ln)}
+.scan-ocr-label{display:block;font:600 12px var(--tx);color:var(--ac);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em}
 .pdf{width:100%;height:75vh;border:0;border-radius:12px;background:#fff}
 .side{border-left:1px solid var(--ln);padding:20px;overflow:auto;background:var(--alt)}.side h3{font-size:15px;margin:18px 0 8px;letter-spacing:0}.side p{margin:0 0 8px;color:var(--mu);font-size:14px}
+.side-box{background:var(--sf);border-radius:12px;padding:12px;margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.side-box input,.side-box select{border:1px solid var(--ln);background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px;min-height:36px}
 .qh{font-size:14px;padding:8px 10px;border-radius:10px;background:var(--sf);margin-bottom:6px}
+.qh small{display:block;color:var(--mu);font-size:12px;margin-top:4px}
 .pal{position:fixed;display:none;gap:8px;align-items:center;background:var(--ink);padding:8px;border-radius:99px;z-index:50}
 .pal button{width:30px;height:30px;border-radius:50%;border:0;cursor:pointer}.pal .wd{width:auto;border-radius:99px;padding:0 12px;background:var(--bg);color:var(--ink);font-size:13px;height:30px}
 #toast{position:fixed;inset:auto auto calc(24px + env(safe-area-inset-bottom,0px)) 50%;margin:0;transform:translateX(-50%);background:var(--ink);color:var(--bg);border:0;padding:12px 20px;border-radius:99px;font-size:15px;max-width:90%;text-align:center}
-@media(max-width:820px){.links{display:none}.pst{grid-template-columns:repeat(2,1fr)}#rd[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr 200px}.side{border-left:0;border-top:1px solid var(--ln)}section.s{padding:60px 0 4px}}
+@media(max-width:820px){.links{display:none}.pst{grid-template-columns:repeat(2,1fr)}#rd[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr 220px}.side{border-left:0;border-top:1px solid var(--ln)}section.s{padding:60px 0 4px}}
 @media(max-width:560px){.w{padding:0 16px}.lbl,.sf select{display:none}.hero{padding-top:44px}.books{grid-template-columns:repeat(2,1fr);gap:24px 14px}.dev article{padding:20px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 </style>
@@ -155,9 +167,9 @@ textarea.code-box{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 <button class="btn pri" onclick="searchOpenSourceBooks()"><svg class="i"><use href="#se"/></svg><span class="lbl">Cari buku</span></button></div>
 <div class="chips" id="tps"></div><p class="stat" id="osst" role="status">Siap mencari</p><div class="books" id="ogrid"></div></div></section>
 
-<section class="s" id="riwayat"><div class="w"><div class="hd"><h2>Riwayat dan stabilo.</h2><p>Buku yang Anda buka, kalimat yang disorot, dan kata yang ditandai tersimpan otomatis di perangkat ini.</p></div><div class="hist" id="hist"></div></div></section>
+<section class="s" id="riwayat"><div class="w"><div class="hd"><h2>Riwayat dan stabilo.</h2><p>Halaman terakhir yang Anda baca, kalimat yang disorot, dan kata yang ditandai tersimpan otomatis di perangkat ini.</p></div><div class="hist" id="hist"></div></div></section>
 
-<footer><div class="w"><span><span id="sec">©</span> 2026 Perpustakaan Digital Ikatan Adhyaksa Dharmakarini (IAD) Daerah Paser. Literasi digital, akses terbuka, dan koleksi daerah. <b id="cloud" style="display:none;font-weight:500"></b></span>
+<footer><div class="w"><span><span id="sec">Hak Cipta</span> 2026 Perpustakaan Digital Ikatan Adhyaksa Dharmakarini (IAD) Daerah Paser. Literasi digital, akses terbuka, dan koleksi daerah. <b id="cloud" style="display:none;font-weight:500"></b></span>
 <span><button onclick="openProfileModal()">Profil literatur</button><button id="mg-btn" style="display:none" onclick="openManagementPanel()">Panel pengelola</button></span></div></footer>
 
 <dialog id="m-login"><form class="dl" onsubmit="submitLoginByRole(event)">
@@ -200,8 +212,21 @@ textarea.code-box{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 <dialog id="rd"><div class="rh"><div><h2 id="rt"></h2><small id="rs"></small></div>
 <button class="btn sm" id="rlk" onclick="toggleCurrentReaderLike()">Suka</button><button class="btn sm" onclick="shareCurrentBook()">Bagikan</button><button class="btn pri sm" onclick="closeReader()">Tutup pembaca</button></div>
 <div class="pg" id="pg"><article id="rb"></article></div>
-<div class="side"><h2 style="font-size:19px">Stabilo dan penanda kata</h2><p>Blok teks pada buku teks/HTML, lalu pilih warna stabilo atau tandai kata penting. (Untuk PDF hasil scan gambar, gunakan fitur unduh/riwayat bacaan.)</p>
-<h3>Kalimat disorot</h3><div id="rh-l"></div><h3>Kata ditandai</h3><div id="rw-l"></div></div>
+<div class="side">
+  <h2 style="font-size:19px">Penanda & Stabilo</h2>
+  <p id="rd-pos-info" style="font-weight:600;color:var(--ac)">Posisi baca: Halaman 1</p>
+  <p>Blok teks di halaman bacaan (atau gunakan tombol Baca Teks pada halaman scan gambar), lalu pilih warna stabilo atau tandai kata.</p>
+  <div class="side-box">
+    <strong style="font-size:13px">Tandai kata atau catatan manual</strong>
+    <input id="manual-word-input" placeholder="Ketik kata/istilah dari halaman ini">
+    <div style="display:flex;gap:6px">
+      <button type="button" class="btn sm pri" style="flex:1" onclick="addManualMarkedWord()">Tandai kata</button>
+      <button type="button" class="btn sm" style="flex:1" onclick="addManualHighlight()">Sorot kalimat</button>
+    </div>
+  </div>
+  <h3>Kalimat disorot</h3><div id="rh-l"></div>
+  <h3>Kata ditandai</h3><div id="rw-l"></div>
+</div>
 <div class="pal" id="pal"><button class="hl-yellow" onclick="applyHighlight('hl-yellow')" aria-label="Stabilo kuning"></button><button class="hl-green" onclick="applyHighlight('hl-green')" aria-label="Stabilo hijau"></button><button class="hl-blue" onclick="applyHighlight('hl-blue')" aria-label="Stabilo biru"></button><button class="hl-pink" onclick="applyHighlight('hl-pink')" aria-label="Stabilo merah muda"></button><button class="wd" onclick="bookmarkSelectedWord()">Tandai kata</button></div></dialog>
 
 <div id="toast" popover="manual" role="status"></div>
@@ -244,9 +269,9 @@ const CURATED=[
 {id:"os-gutenberg-11",title:"Alice's Adventures in Wonderland",author:"Lewis Carroll",language:"EN",source:"Project Gutenberg #11",description:"Petualangan imajinatif penuh filosofi dan teka-teki logika karya Lewis Carroll.",coverGradient:PAL[0],externalUrl:"https://www.gutenberg.org/ebooks/11",content:["Chapter I: Down the Rabbit-Hole. Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do."]}];
 
 const DEFAULT_SA_HASH="c3VwZXJhZG1pbl9wYXNlcnw6fElBRFBhc2VyIzIwMjY=";
-let S={books:[],cat:"Semua Kategori",q:"",session:null,adminAccounts:[],visitorCount:1248,history:[],highlights:[],markedWords:[],likes:{},profiles:{},
-siteConfig:{title:"Perpustakaan Digital IAD Paser",subtitle:"Ikatan Adhyaksa Dharmakarini Daerah Paser",heroHeading:"",announcement:"Selamat datang di Perpustakaan Digital IAD Paser. Jelajahi koleksi literasi lokal dan katalog terbuka dunia.",logoDataUrl:"",logoEmoji:"",accentColor:"",gridMin:"",customCss:"",customJs:"",superAdminConfig:{name:"Super Admin IAD",userId:"superadmin_paser",passHash:DEFAULT_SA_HASH},systemConfig:{autoApproveUploads:false,maxPdfSizeMb:12,showAnnouncement:true,enableOpenSourceTab:true}},
-active:null,os:[...CURATED],cover:PAL[0],loginRoleTab:"user"};
+let S={books:[],cat:"Semua Kategori",q:"",session:null,adminAccounts:[],visitorCount:1248,history:[],highlights:[],markedWords:[],bookmarks:{},likes:{},profiles:{},
+siteConfig:{title:"Perpustakaan Digital IAD Paser",subtitle:"Ikatan Adhyaksa Dharmakarini Daerah Paser",heroHeading:"",announcement:"Selamat datang di Perpustakaan Digital IAD Paser. Jelajahi koleksi literasi lokal dan katalog terbuka dunia.",logoDataUrl:"",accentColor:"",gridMin:"",customCss:"",customJs:"",superAdminConfig:{name:"Super Admin IAD",userId:"superadmin_paser",passHash:DEFAULT_SA_HASH},systemConfig:{autoApproveUploads:false,maxPdfSizeMb:12,showAnnouncement:true,enableOpenSourceTab:true}},
+active:null,currentPage:1,totalPages:1,os:[...CURATED],cover:PAL[0],loginRoleTab:"user"};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const safeUrl=u=>{try{const p=new URL(String(u||""),location.origin);return(p.protocol==="https:"||p.protocol==="http:")?p.href:"#"}catch(e){return"#"}};
@@ -265,7 +290,7 @@ if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudfl
 function setCloud(t,ok=true){const e=$("#cloud");if(!e)return;e.textContent=t;e.style.color=ok?"var(--ac)":"var(--mu)";e.style.display=isSuper()?"inline":"none"}
 async function pushStateToFirebase(){try{setCloud("Menyimpan...");const c=S.siteConfig,sa=saCfg();
  const r=await fetch(`${DB_URL}/iad_paser_db.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({books:S.books,adminAccounts:S.adminAccounts,visitorCount:S.visitorCount,likes:S.likes,profiles:S.profiles,
- siteConfig:{title:c.title,subtitle:c.subtitle,heroHeading:c.heroHeading,announcement:c.announcement,logoDataUrl:c.logoDataUrl||"",logoEmoji:c.logoEmoji||"",accentColor:c.accentColor,gridMin:c.gridMin,customCss:c.customCss||"",customJs:c.customJs||"",superAdminConfig:{name:sa.name,userId:sa.userId,passHash:sa.passHash},systemConfig:{...sys()}},updatedAt:Date.now()})});
+ siteConfig:{title:c.title,subtitle:c.subtitle,heroHeading:c.heroHeading,announcement:c.announcement,logoDataUrl:c.logoDataUrl||"",accentColor:c.accentColor,gridMin:c.gridMin,customCss:c.customCss||"",customJs:c.customJs||"",superAdminConfig:{name:sa.name,userId:sa.userId,passHash:sa.passHash},systemConfig:{...sys()}},updatedAt:Date.now()})});
  setCloud(r.ok?"Cloud aktif":"Mode lokal",r.ok)}catch(e){setCloud("Mode lokal",false)}}
 async function pullStateFromFirebase(count=false){try{const r=await fetch(`${DB_URL}/iad_paser_db.json?t=${Date.now()}`);if(!r.ok)throw 0;const d=await r.json();
  if(d&&typeof d==="object"){if(Array.isArray(d.books)&&d.books.length)S.books=d.books;if(Array.isArray(d.adminAccounts))S.adminAccounts=d.adminAccounts;
@@ -290,10 +315,11 @@ const J=(k,st)=>{try{return JSON.parse((st||localStorage).getItem(k))}catch(e){r
 function loadState(){const b=J("iad_books_v1");S.books=Array.isArray(b)&&b.length?b:[...DEFAULT_BOOKS];
  const a=J("iad_admins_v1");if(Array.isArray(a))S.adminAccounts=a;const h=J("iad_history_v1");if(Array.isArray(h))S.history=h;
  const hl=J("iad_highlights_v1");if(Array.isArray(hl))S.highlights=hl;const w=J("iad_words_v1");if(Array.isArray(w))S.markedWords=w;
+ const bm=J("iad_bookmarks_v1");if(bm&&typeof bm==="object")S.bookmarks=bm;
  const l=J("iad_likes_v1");if(l&&typeof l==="object")S.likes=l;const p=J("iad_profiles_v1");if(p&&typeof p==="object")S.profiles=p;
  const c=J("iad_config_v1");if(c&&typeof c==="object")S.siteConfig={...S.siteConfig,...c,superAdminConfig:{...saCfg(),...(c.superAdminConfig||{})},systemConfig:{...sys(),...(c.systemConfig||{})}};
  const s=J("iad_session_v1",sessionStorage);if(s)S.session=s;S.visitorCount=parseInt(localStorage.getItem("iad_visitors_v1")||"1248",10)}
-function saveLocal(){try{const L=(k,v)=>localStorage.setItem(k,JSON.stringify(v));L("iad_books_v1",S.books);L("iad_admins_v1",S.adminAccounts);L("iad_history_v1",S.history);L("iad_highlights_v1",S.highlights);L("iad_words_v1",S.markedWords);L("iad_likes_v1",S.likes);L("iad_profiles_v1",S.profiles);L("iad_config_v1",S.siteConfig);localStorage.setItem("iad_visitors_v1",String(S.visitorCount));
+function saveLocal(){try{const L=(k,v)=>localStorage.setItem(k,JSON.stringify(v));L("iad_books_v1",S.books);L("iad_admins_v1",S.adminAccounts);L("iad_history_v1",S.history);L("iad_highlights_v1",S.highlights);L("iad_words_v1",S.markedWords);L("iad_bookmarks_v1",S.bookmarks);L("iad_likes_v1",S.likes);L("iad_profiles_v1",S.profiles);L("iad_config_v1",S.siteConfig);localStorage.setItem("iad_visitors_v1",String(S.visitorCount));
  if(S.session)sessionStorage.setItem("iad_session_v1",JSON.stringify(S.session));else sessionStorage.removeItem("iad_session_v1")}catch(e){}}
 function persistAll(sync=true){saveLocal();if(sync)pushStateToFirebase()}
 
@@ -325,9 +351,12 @@ function renderAll(){
   if(c.gridMin)document.documentElement.style.setProperty("--grid-min",c.gridMin);
   $("#ann-t").textContent=c.announcement;$("#ann").style.display=s.showAnnouncement===false?"none":"block";
   const os=s.enableOpenSourceTab!==false;$("#katalog").style.display=os?"":"none";$("#lnk-os").style.display=os?"":"none";$("#ann-a").style.display=os?"":"none";
-  $("#logo").innerHTML=c.logoDataUrl?`<img src="${c.logoDataUrl}" alt="Logo">`:c.logoEmoji?esc(c.logoEmoji):'<svg class="i"><use href="#bk"/></svg>';
+  const logoEl=$("#logo");
+  const hasLogo=Boolean(c.logoDataUrl);
+  logoEl.classList.toggle("has-custom-logo",hasLogo);
+  logoEl.innerHTML=hasLogo?`<img src="${c.logoDataUrl}" alt="Logo">`:'<svg class="i"><use href="#bk"/></svg>';
   $("#vis").textContent=S.visitorCount.toLocaleString("id-ID");
-  const mx=Number(s.maxPdfSizeMb)||12;$("#uh").textContent=`Maksimal ${mx} MB, termasuk PDF hasil scan gambar. File disimpan dan disinkronkan ke cloud.`;
+  const mx=Number(s.maxPdfSizeMb||12);$("#uh").textContent=`Maksimal ${mx} MB, termasuk PDF hasil scan gambar. File disimpan dan disinkronkan ke cloud.`;
   $("#usub").textContent=(isAdm()||s.autoApproveUploads)?"Terbitkan e-book langsung":"Kirim ke antrean moderasi";
   renderAuth();renderCats();renderStats();renderCatalog();renderOS();renderHistory();applyDynamicCode();
   setCloud($("#cloud").textContent||"Cloud aktif");
@@ -340,7 +369,7 @@ function renderAuth(){
     return;
   }
   const p=getUserProfile(key());
-  const roleTag=S.session.role==="superadmin"?" · Super Admin":S.session.role==="admin"?" · Admin":"";
+  const roleTag=S.session.role==="superadmin"?" - Super Admin":S.session.role==="admin"?" - Admin":"";
   a.innerHTML=`<button class="chip" onclick="openProfileModal()" aria-label="Buka profil literatur"><span class="av">${avatar(p)}</span><span class="n">${esc(p.displayName)}${roleTag}</span></button>`;
   if(mg){
     mg.style.display="inline-flex";
@@ -349,381 +378,10 @@ function renderAuth(){
 }
 function renderCats(){const ap=S.books.filter(b=>b.status==="approved");$("#cats").innerHTML=CATEGORIES.map(c=>`<button class="cat" aria-pressed="${S.cat===c}" onclick="selectCategory(this.dataset.c)" data-c="${esc(c)}">${esc(c)}<small>${c==="Semua Kategori"?ap.length:ap.filter(b=>b.category===c).length}</small></button>`).join("")}
 function renderStats(){$("#st-b").textContent=S.books.filter(b=>b.status==="approved").length;$("#st-n").textContent=S.highlights.length+S.markedWords.length}
-function cardHtml(b,mode){const lk=(S.likes[key()]||[]).includes(b.id),os=mode==="os",ext=safeUrl(b.externalUrl);
- return `<article class="bk"><div class="cvw"><button class="lk" aria-pressed="${lk}" aria-label="Sukai buku" onclick="toggleBookLike('${b.id}')"><svg class="i"><use href="#ht"/></svg></button>
-<div class="cv" style="background:${b.coverGradient||PAL[0]}">${b.coverImg?`<img src="${esc(b.coverImg)}" alt="" onerror="this.remove()">`:""}<div class="ov"><b>${esc(b.title)}</b><i>${esc(b.author)}</i></div></div></div>
-<span class="ct">${esc(os?b.source:b.category)}</span><h3>${esc(b.title)}</h3><small>${esc(b.author)}${os?", "+esc(b.language):""}</small><p class="ds">${esc(b.description)}</p>
-<div class="ac"><button class="btn pri sm" onclick="openBookReader('${b.id}','${mode}')">Baca</button>${os&&ext!=="#"?`<a class="btn sm" href="${esc(ext)}" target="_blank" rel="noopener noreferrer">Naskah penuh</a>`:""}</div></article>`}
-function renderCatalog(){const q=S.q.toLowerCase().trim();const f=S.books.filter(b=>b.status==="approved"&&(S.cat==="Semua Kategori"||b.category===S.cat)&&(!q||[b.title,b.author,b.category,b.description].join(" ").toLowerCase().includes(q)));
- $("#cgrid").innerHTML=f.length?f.map(b=>cardHtml(b,"local")).join(""):'<div class="empty"><p>Belum ada buku yang sesuai. Coba kategori lain atau unggah e-book baru.</p><button class="btn pri" onclick="handleUploadClick()">Unggah e-book</button></div>'}
-function renderOS(){$("#ogrid").innerHTML=S.os.map(b=>cardHtml(b,"os")).join("")}
-const TOPICS=[["Sastra Klasik","classic literature"],["Hukum & Keadilan","law and justice"],["Pendidikan & Keluarga","education family"],["Sejarah & Peradaban","history asia"],["Kesehatan","health wellness"]];
-$("#tps").innerHTML=TOPICS.map(t=>`<button class="tp" onclick="quickOpenSourceTopic('${t[1]}',this)">${t[0]}</button>`).join("");
-
-/* === 6. KATALOG OPEN-SOURCE === */
-async function searchOpenSourceBooks(){const q=($("#osq").value||"literature").trim(),lang=$("#osl").value,st=$("#osst");st.textContent="Memuat katalog terbuka...";
- try{const ct=new AbortController(),to=setTimeout(()=>ct.abort(),7000);let u=`https://gutendex.com/books/?search=${encodeURIComponent(q)}`;if(lang)u+=`&languages=${encodeURIComponent(lang)}`;
-  const r=await fetch(u,{signal:ct.signal});clearTimeout(to);if(!r.ok)throw 0;const d=await r.json();
-  if(d&&Array.isArray(d.results)&&d.results.length){S.os=d.results.slice(0,12).map((it,i)=>{const au=it.authors&&it.authors[0]?it.authors[0].name:"Penulis klasik",sub=(it.subjects||[]).slice(0,2).join(", ")||"Koleksi domain publik",f=it.formats||{};
-   return{id:`gutendex-${it.id}`,title:it.title,author:au,language:(it.languages&&it.languages[0]||"en").toUpperCase(),source:`Project Gutenberg #${it.id}`,description:sub,coverGradient:PAL[i%PAL.length],coverImg:f["image/jpeg"]||"",externalUrl:safeUrl(f["text/html"]||f["text/plain; charset=utf-8"]||f["text/plain"]||`https://www.gutenberg.org/ebooks/${it.id}`),
-   content:[`Judul: ${it.title}. Karya ${au}.`,`Sumber terbuka: ${sub}. Buku ini koleksi domain publik internasional yang tersedia bebas melalui Project Gutenberg.`,"Anda dapat menandai kutipan penting di halaman pratinjau ini dengan stabilo, atau membuka naskah lengkap lewat tautan sumber resmi."]}});
-   st.textContent=`${S.os.length} buku ditemukan`;renderOS();return}throw 0}
- catch(e){const l=q.toLowerCase(),fb=CURATED.filter(b=>(b.title+b.author+b.description).toLowerCase().includes(l));S.os=fb.length?fb:[...CURATED];st.textContent="Menampilkan koleksi terbuka pilihan";renderOS()}}
-function quickOpenSourceTopic(t,btn){document.querySelectorAll(".tp").forEach(c=>c.classList.remove("on"));btn.classList.add("on");$("#osq").value=t;searchOpenSourceBooks()}
-
-/* === 7. PEMBACA, PDF SCAN, STABILO === */
-function dataUrlToBytes(u){const b=atob((u.split(",")[1]||"").trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
-async function renderPdfPages(u,el){if(!window.pdfjsLib){el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;return}
- try{const doc=await pdfjsLib.getDocument({data:dataUrlToBytes(u)}).promise,n=doc.numPages;
-  el.innerHTML=`<div class="row"><b>PDF (termasuk hasil scan), ${n} halaman</b><a class="btn sm" href="${u}" download="dokumen.pdf">Unduh PDF</a></div><div id="pgs"></div>`;const L=$("#pgs"),mx=Math.min(n,35);
-  for(let i=1;i<=mx;i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),tw=Math.min(680,Math.max(280,el.clientWidth-24)),v=pg.getViewport({scale:Math.min(1.6,Math.max(.85,tw/v0.width))});
-   const c=document.createElement("div");c.className="scan";c.innerHTML=`<small>Halaman ${i} dari ${n}</small>`;const cv=document.createElement("canvas");cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);c.appendChild(cv);L.appendChild(c);await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise}
-  if(n>mx){const p=document.createElement("p");p.style.cssText="text-align:center;color:var(--mu);font-size:14px";p.textContent=`Menampilkan ${mx} halaman awal. Unduh PDF untuk membuka seluruh ${n} halaman.`;L.appendChild(p)}}
- catch(e){el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`}}
-async function openBookReader(id,src){const b=src==="os"?S.os.find(x=>x.id===id):S.books.find(x=>x.id===id);if(!b)return;S.active=b;
- S.history=[{bookId:b.id,title:b.title,author:b.author,lastRead:new Date().toLocaleDateString("id-ID")},...S.history.filter(h=>h.bookId!==b.id)].slice(0,20);persistAll(false);renderStats();renderHistory();
- $("#rt").textContent=b.title;$("#rs").textContent=`${b.author} · ${b.category||b.source}`;updateLikeBtn();const a=$("#rb");
- if(b.type==="pdf"){a.innerHTML='<p style="text-align:center;color:var(--mu)">Memuat halaman PDF...</p>';openModal("rd");
-  let u=await getBlobFromIDB(`pdf_${b.id}`);if(!u){u=await getPdfFromFirebase(b.id);if(u)await saveBlobToIDB(`pdf_${b.id}`,u)}
-  if(u)await renderPdfPages(u,a);else a.innerHTML="<p>File PDF tidak ditemukan di penyimpanan lokal maupun cloud.</p>"}
- else{const ps=Array.isArray(b.content)?b.content:[String(b.content||b.description)],ext=safeUrl(b.externalUrl);
-  a.innerHTML=`<h2 style="font:600 28px var(--tx);letter-spacing:-.03em;margin-bottom:6px">${esc(b.title)}</h2><p style="color:var(--mu);font:15px var(--tx)">Oleh ${esc(b.author)}</p>`+ps.map(p=>`<p>${esc(p)}</p>`).join("")+(ext!=="#"?`<p style="font:16px var(--tx)"><a class="btn pri sm" href="${esc(ext)}" target="_blank" rel="noopener noreferrer">Buka naskah lengkap di sumber asli</a></p>`:"");openModal("rd")}
- renderAnnotations()}
-function closeReader(){$("#rd").close();$("#pal").style.display="none";S.active=null}
-function handleTextSelection(){if(!$("#rd").open)return;const pal=$("#pal"),s=getSelection(),t=s?s.toString().trim():"";
- if(t.length>=2&&t.length<=400&&s.rangeCount){const r=s.getRangeAt(0).getBoundingClientRect();pal.style.display="flex";pal.style.top=Math.max(60,r.top-52)+"px";pal.style.left=Math.min(innerWidth-280,Math.max(12,r.left))+"px"}else pal.style.display="none"}
-document.addEventListener("mouseup",handleTextSelection);document.addEventListener("touchend",()=>setTimeout(handleTextSelection,120));
-function applyHighlight(c){const s=getSelection(),t=s?s.toString().trim():"";if(!t||!S.active)return;
- try{const m=document.createElement("mark");m.className=c;s.getRangeAt(0).surroundContents(m)}catch(e){}
- S.highlights.unshift({id:"hl-"+Date.now(),bookId:S.active.id,bookTitle:S.active.title,text:t,color:c});s.removeAllRanges();$("#pal").style.display="none";persistAll(false);renderAnnotations();renderStats();renderHistory();showToast("Kalimat berhasil disorot")}
-function bookmarkSelectedWord(){const s=getSelection(),w=s?s.toString().trim().split(/\s+/)[0]:"";if(!w||!S.active)return;
- S.markedWords.unshift({id:"wd-"+Date.now(),bookId:S.active.id,bookTitle:S.active.title,word:w.replace(/[.,!?;:"()]/g,"")});s.removeAllRanges();$("#pal").style.display="none";persistAll(false);renderAnnotations();renderStats();renderHistory();showToast(`Kata "${w}" ditandai`)}
-function renderAnnotations(){if(!S.active)return;const id=S.active.id,h=S.highlights.filter(x=>x.bookId===id),w=S.markedWords.filter(x=>x.bookId===id);
- $("#rh-l").innerHTML=h.length?h.map(x=>`<div class="qh"><mark class="${esc(x.color)}">${esc(x.text)}</mark></div>`).join(""):'<p>Belum ada.</p>';
- $("#rw-l").innerHTML=w.length?w.map(x=>`<span class="tp on" style="display:inline-block;margin:0 6px 6px 0;line-height:36px">${esc(x.word)}</span>`).join(""):"<p>Belum ada.</p>"}
-
-/* === 8. RIWAYAT & SUKA === */
-const srcOf=id=>id.startsWith("os-")||id.startsWith("gutendex-")?"os":"local";
-function renderHistory(){let h="";
- if(S.highlights.length)h+=`<div class="card"><h4>Kalimat distabilo (${S.highlights.length})</h4>${S.highlights.map(x=>`<div class="row"><div><mark class="${esc(x.color)}">${esc(x.text)}</mark><small>Dari buku: ${esc(x.bookTitle)}</small></div><button class="btn sm dgr" onclick="deleteHighlight('${x.id}')">Hapus</button></div>`).join("")}</div>`;
- if(S.markedWords.length)h+=`<div class="card"><h4>Kata yang ditandai (${S.markedWords.length})</h4>${S.markedWords.map(w=>`<span class="tp on" style="display:inline-block;margin:0 6px 6px 0;line-height:36px" title="${esc(w.bookTitle)}">${esc(w.word)}</span>`).join("")}</div>`;
- if(S.history.length)h+=`<div class="card"><h4>Terakhir dibaca</h4>${S.history.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(x.author)}, dibaca ${esc(x.lastRead)}</small></div><button class="btn pri sm" onclick="openBookReader('${x.bookId}','${srcOf(x.bookId)}')">Lanjut baca</button></div>`).join("")}</div>`;
- $("#hist").innerHTML=h||'<div class="empty"><p>Belum ada riwayat bacaan atau stabilo. Buka salah satu buku untuk mulai mencatat.</p></div>'}
-function deleteHighlight(id){S.highlights=S.highlights.filter(h=>h.id!==id);persistAll(false);renderStats();renderHistory()}
-function toggleBookLike(id){const k=key();if(!S.likes[k])S.likes[k]=[];const i=S.likes[k].indexOf(id);if(i>-1){S.likes[k].splice(i,1);showToast("Dihapus dari buku yang disukai")}else{S.likes[k].push(id);showToast("Ditambahkan ke buku yang disukai")}persistAll(true);renderCatalog();renderOS();updateLikeBtn()}
-function toggleCurrentReaderLike(){if(S.active)toggleBookLike(S.active.id)}
-function updateLikeBtn(){if(S.active)$("#rlk").textContent=(S.likes[key()]||[]).includes(S.active.id)?"Disukai":"Suka"}
-
-/* === 9. PILIHAN LOGIN (USER BIASA / ADMIN / SUPER ADMIN) & UNGGAH === */
-function switchLoginRoleTab(role){
-  S.loginRoleTab = role;
-  ["user","admin","superadmin"].forEach(r=>{
-    const btn=$("#rtab-"+r);
-    if(btn)btn.setAttribute("aria-pressed", String(r===role));
-  });
-  const isUser = role==="user";
-  $("#login-fields-user").style.display = isUser?"flex":"none";
-  $("#login-fields-staff").style.display = isUser?"none":"flex";
-  $("#gn").required = isUser;
-  $("#ge").required = isUser;
-  $("#lu").required = !isUser;
-  $("#lp").required = !isUser;
-  if(!isUser){
-    $("#staff-login-desc").textContent = role==="superadmin"
-      ? "Masuk sebagai Super Admin untuk mengelola sistem, akun admin, tampilan, dan struktur kode."
-      : "Masuk sebagai Admin untuk memoderasi e-book dan mengatur identitas halaman.";
-  }
-  $("#login-submit-btn").textContent = isUser
-    ? "Lanjutkan dengan Google"
-    : role==="superadmin"
-    ? "Masuk sebagai Super Admin"
-    : "Masuk sebagai Admin";
-}
-function openLoginWithRole(role="user"){
-  switchLoginRoleTab(role);
-  openModal("m-login");
-}
-function verifyStaffCredentials(role, uid, pw){
-  if(role==="superadmin"){
-    const sa=saCfg();
-    if(uid===sa.userId && btoa(`${uid}|:|${pw}`)===sa.passHash){
-      return {role:"superadmin", name:sa.name||"Super Admin IAD", id:sa.userId};
-    }
-    if(btoa(`${uid}|:|${pw}`)===DEFAULT_SA_HASH){
-      return {role:"superadmin", name:sa.name||"Super Admin IAD", id:uid};
-    }
-    return null;
-  }
-  if(role==="admin"){
-    const f=S.adminAccounts.find(a=>a.userId===uid && a.passHash===btoa(pw));
-    if(f)return {role:"admin", name:f.name, id:f.userId, accountId:f.id};
-  }
-  return null;
-}
-function submitLoginByRole(e){
-  e.preventDefault();
-  const role = S.loginRoleTab || "user";
-  if(role==="user"){
-    const n=$("#gn").value.trim(),m=$("#ge").value.trim().toLowerCase();
-    if(!n||!m)return;
-    S.session={role:"user",name:n,email:m,id:m};
-    getUserProfile(key()).displayName=n;
-    persistAll(true);closeModal("m-login");$("#gn").value=$("#ge").value="";renderAll();showToast(`Selamat datang, ${n}`);
-    return;
-  }
-  const uid=$("#lu").value.trim(), pw=$("#lp").value;
-  const ok=verifyStaffCredentials(role, uid, pw);
-  if(!ok){showToast("User ID atau kata sandi tidak valid");return;}
-  S.session=ok;
-  getUserProfile(key()).displayName=ok.name;
-  persistAll(false);closeModal("m-login");$("#lu").value=$("#lp").value="";renderAll();openManagementPanel();showToast(`Masuk sebagai ${ok.name}`);
-}
-function handleUploadClick(){if(!S.session){openLoginWithRole("user");showToast("Silakan masuk terlebih dahulu");return}renderAll();renderPalPicker();openModal("m-up")}
-function renderPalPicker(){$("#pal-pick").innerHTML=PAL.map((g,i)=>`<label><input type="radio" name="cv" style="--c:${g}" ${S.cover===g?"checked":""} onchange="S.cover=PAL[${i}]" aria-label="Warna ${i+1}"></label>`).join("")}
-$("#uc").innerHTML=CATEGORIES.slice(1).map(c=>`<option>${c}</option>`).join("");
-async function submitUploadBook(e){e.preventDefault();if(!S.session)return;const f=$("#uf").files[0];if(!f)return;
- const id="book-"+Date.now(),t=$("#ut").value.trim(),a=$("#ua").value.trim(),c=$("#uc").value,d=$("#ud").value.trim(),pdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf"),mx=Number(sys().maxPdfSizeMb||12);
- if(pdf){if(f.size>mx*1048576){showToast(`Ukuran file PDF maksimal ${mx} MB.`);return}
-  const r=new FileReader();r.onload=async ev=>{await saveBlobToIDB(`pdf_${id}`,ev.target.result);await savePdfToFirebase(id,ev.target.result);finalizeBook(id,t,a,c,d,"pdf",[])};r.readAsDataURL(f)}
- else{const tx=await f.text(),ps=tx.split(/\r?\n+/).map(p=>p.trim()).filter(Boolean);finalizeBook(id,t,a,c,d,"text",ps.length?ps:[tx])}}
-function finalizeBook(id,title,author,category,description,type,content){const ok=isAdm()||Boolean(sys().autoApproveUploads);
- S.books.unshift({id,title,author,category,description,coverGradient:S.cover,status:ok?"approved":"pending",type,content,uploaderEmail:S.session.email||S.session.name});
- persistAll(true);closeModal("m-up");["ut","ua","ud","uf"].forEach(i=>$("#"+i).value="");renderAll();showToast(ok?"E-book berhasil diterbitkan ke katalog.":"E-book terkirim ke antrean moderasi admin.")}
-
-/* === 10. PROFIL LITERATUR === */
-function openProfileModal(){if(!S.session){openLoginWithRole("user");return}const k=key(),p=getUserProfile(k),ids=S.likes[k]||[];
- const mp=new Map([...S.books,...CURATED,...S.os].map(b=>[b.id,b])),liked=ids.map(i=>mp.get(i)).filter(Boolean),up=S.books.filter(b=>b.uploaderEmail===(S.session.email||S.session.name));
- $("#prof-b").innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="av" style="width:64px;height:64px;font-size:26px">${avatar(p)}</span><div style="flex:1;min-width:180px"><h3 style="font-size:22px">${esc(p.displayName)}</h3><p style="font-size:14px">${esc(S.session.email||S.session.id)}, genre favorit: ${esc(p.favGenre)}</p></div><button class="btn sm dgr" onclick="logoutAccount()">Keluar akun</button></div>
- <p style="margin-top:12px;color:var(--ink)">${esc(p.bio)}</p><p style="font-style:italic;margin-top:6px">"${esc(p.quote)}"</p>
- <div class="pst" style="margin:16px 0"><div><b>${liked.length}</b><span>Buku disukai</span></div><div><b>${S.history.length}</b><span>Buku dibaca</span></div><div><b>${S.highlights.length+S.markedWords.length}</b><span>Stabilo dan kata</span></div><div><b>${up.length}</b><span>Karya diunggah</span></div></div>
- <div class="card" style="background:var(--alt)"><h4>Ubah profil</h4><div style="display:grid;gap:12px"><label>Foto profil (opsional)<input type="file" accept="image/*" onchange="handleProfilePhotoUpload(event)"></label>
- <label>Nama tampilan<input id="pe-n" value="${esc(p.displayName)}"></label><label>Genre favorit<select id="pe-g">${CATEGORIES.slice(1).map(c=>`<option ${p.favGenre===c?"selected":""}>${c}</option>`).join("")}</select></label>
- <label>Bio literatur<input id="pe-b" value="${esc(p.bio)}"></label><label>Kutipan favorit<input id="pe-q" value="${esc(p.quote)}"></label><button class="btn pri" onclick="saveProfileEdits()">Simpan profil</button></div></div>
- <h4 style="margin:6px 0 10px">Rak buku yang disukai (${liked.length})</h4>${liked.length?liked.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>${esc(b.author)}</small></div><button class="btn pri sm" onclick="closeModal('m-prof');openBookReader('${b.id}','${srcOf(b.id)}')">Baca</button></div>`).join(""):'<p>Belum ada buku yang disukai. Tekan ikon hati pada sampul buku.</p>'}`;openModal("m-prof")}
-function handleProfilePhotoUpload(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{getUserProfile(key()).photoDataUrl=ev.target.result;persistAll(true);renderAuth();openProfileModal();showToast("Foto profil diperbarui")};r.readAsDataURL(f)}
-function saveProfileEdits(){const p=getUserProfile(key());p.displayName=$("#pe-n").value.trim()||p.displayName;p.favGenre=$("#pe-g").value;p.bio=$("#pe-b").value.trim();p.quote=$("#pe-q").value.trim();persistAll(true);renderAuth();openProfileModal();showToast("Profil literatur disimpan")}
-function logoutAccount(){S.session=null;persistAll(false);closeModal("m-prof");closeModal("m-mg");renderAll();showToast("Anda telah keluar dari akun")}
-
-/* === 11. AKSES PENGELOLA, GANTI NAMA & PASSWORD, GEMINI AI & PANEL SUPER ADMIN === */
-let tap=0,tapT;$("#sec").addEventListener("click",()=>{tap++;clearTimeout(tapT);tapT=setTimeout(()=>tap=0,1800);if(tap>=5){tap=0;openModal("m-auth")}});
-document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==="A"||e.key==="a")){e.preventDefault();openModal("m-auth")}});
-function submitPrivateAuth(e){e.preventDefault();const role=$("#pr").value,uid=$("#pu").value.trim(),pw=$("#pp").value;
- const ok=verifyStaffCredentials(role, uid, pw);
- if(!ok){showToast("Kredensial tidak valid");return}
- S.session=ok;getUserProfile(key()).displayName=ok.name;persistAll(false);closeModal("m-auth");$("#pu").value=$("#pp").value="";renderAll();openManagementPanel()}
-
-function openManagementPanel(){if(!isAdm())return;const su=isSuper(),s=sys(),sa=saCfg(),pend=S.books.filter(b=>b.status==="pending"),ap=S.books.filter(b=>b.status==="approved");
- const curAcctName = su ? (sa.name || S.session.name) : (S.session.name || "");
- const curAcctId = su ? (sa.userId || S.session.id) : (S.session.id || "");
- const savedGemKey = sessionStorage.getItem("iad_gemini_key") || "";
- $("#mg-t").textContent=su?"Panel super admin":"Panel moderasi admin";
-
- let h=`<div class="card" style="background:var(--alt)"><h4>Ganti nama akun & kata sandi (${su?"Super Admin":"Admin"})</h4>
- <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
- <label>Nama akun<input id="acc-chg-name" value="${esc(curAcctName)}" required></label>
- <label>User ID akun<input id="acc-chg-uid" value="${esc(curAcctId)}" required></label>
- <label>Kata sandi baru (kosongkan jika tidak diganti)<input id="acc-chg-pwd" type="password" autocomplete="new-password" placeholder="Minimal 4 karakter"></label>
- </div>
- <div style="margin-top:12px"><button class="btn pri sm" onclick="saveOwnAccountCredentials()">Simpan nama & kata sandi</button></div></div>
-
- <div class="card" style="background:var(--alt)"><h4>Antrean moderasi (${pend.length})</h4>${pend.length?pend.map(b=>`<div class="row" style="background:var(--sf)"><div><b>${esc(b.title)}</b><small>${esc(b.author)}, ${esc(b.category)}, pengunggah: ${esc(b.uploaderEmail||"-")}</small></div><span style="display:flex;gap:6px"><button class="btn pri sm" onclick="approveBook('${b.id}')">Setujui</button><button class="btn sm dgr" onclick="removeBook('${b.id}')">Tolak</button></span></div>`).join(""):'<p style="color:var(--mu);margin:0">Tidak ada e-book yang menunggu persetujuan.</p>'}</div>
- <div class="card" style="background:var(--alt)"><h4>Koleksi tayang (${ap.length})</h4>${ap.map(b=>`<div class="row" style="background:var(--sf)"><div><b>${esc(b.title)}</b><small>${esc(b.category)}</small></div><button class="btn sm dgr" onclick="removeBook('${b.id}')">Hapus</button></div>`).join("")}</div>
- <div class="card" style="background:var(--alt)"><h4>Identitas dan logo</h4><div style="display:grid;gap:12px"><label>Judul website<input id="ac-t" value="${esc(S.siteConfig.title)}"></label><label>Teks pengumuman<input id="ac-b" value="${esc(S.siteConfig.announcement)}"></label>
- <label>Logo website (PNG, JPG, atau SVG, maksimal 1,5 MB)<input type="file" accept="image/*" onchange="handleAdminLogoUpload(event)"></label>
- <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri sm" onclick="saveAdminIdentitySettings()">Simpan identitas</button><button class="btn sm" onclick="resetLogo()">Reset logo bawaan</button></div></div></div>`;
-
- if(su){
-  h+=`<div class="card" style="background:var(--alt)"><h4>Kustomisasi tampilan website (Super Admin)</h4>
-  <div style="display:grid;gap:12px">
-  <label>Judul utama website<input id="sa-title" value="${esc(S.siteConfig.title)}"></label>
-  <label>Judul hero halaman<input id="sa-hero" value="${esc(S.siteConfig.heroHeading||"")}"></label>
-  <label>Teks pengumuman banner<input id="sa-ann" value="${esc(S.siteConfig.announcement)}"></label>
-  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
-    <label style="flex:0 0 auto">Warna aksen<input type="color" id="sa-acc" value="${esc(S.siteConfig.accentColor||"#0A7C5A")}" style="width:54px;height:40px;padding:2px"></label>
-    <label style="flex:1;min-width:180px">Lebar minimum kartu grid<select id="sa-grid">
-      <option value="170px" ${S.siteConfig.gridMin==="170px"?"selected":""}>Rapat (170px)</option>
-      <option value="190px" ${!S.siteConfig.gridMin||S.siteConfig.gridMin==="190px"?"selected":""}>Standar (190px)</option>
-      <option value="240px" ${S.siteConfig.gridMin==="240px"?"selected":""}>Lebar (240px)</option>
-    </select></label>
-  </div>
-  <div><button class="btn pri sm" onclick="saveSuperAdminVisuals()">Terapkan tampilan</button></div>
-  </div></div>
-
-  <div class="card" style="background:var(--alt)"><h4>Ubah struktur coding dengan Gemini AI (Super Admin)</h4>
-  <div style="display:grid;gap:12px">
-  <label>Gemini API Key (tersimpan di sesi browser)<input type="password" id="gem-key" value="${esc(savedGemKey)}" placeholder="AIza..."></label>
-  <label>Instruksi perubahan struktur kode<textarea id="gem-prompt" rows="2" placeholder="Contoh: Beri garis tepi halus pada kartu buku dan tampilkan pesan sambutan saat halaman dimuat."></textarea></label>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button type="button" class="btn pri sm" onclick="generateCodeWithGemini()">Buat struktur via Gemini AI</button>
-    <button type="button" class="btn sm" onclick="applyDynamicCodeInputs()">Terapkan kode di bawah</button>
-    <button type="button" class="btn sm dgr" onclick="resetDynamicCodeInputs()">Reset kode kustom</button>
-  </div>
-  <label>CSS Kustom<textarea id="gem-css" class="code-box" rows="4" placeholder="/* CSS tambahan */">${esc(S.siteConfig.customCss||"")}</textarea></label>
-  <label>JS Kustom (parameter tersedia: S, showToast, renderAll)<textarea id="gem-js" class="code-box" rows="4" placeholder="// JS tambahan">${esc(S.siteConfig.customJs||"")}</textarea></label>
-  </div></div>
-
-  <div class="card" style="background:var(--alt)"><h4>Pengaturan sistem</h4>
-  <label class="sx"><span>Terbitkan unggahan otomatis<small>Buku pengguna langsung tayang tanpa antrean moderasi.</small></span><input type="checkbox" id="sy-a" ${s.autoApproveUploads?"checked":""}></label>
-  <label class="sx"><span>Tampilkan banner pengumuman<small>Baris pengumuman di atas halaman.</small></span><input type="checkbox" id="sy-s" ${s.showAnnouncement!==false?"checked":""}></label>
-  <label class="sx"><span>Aktifkan katalog open-source<small>Akses buku domain publik internasional.</small></span><input type="checkbox" id="sy-o" ${s.enableOpenSourceTab!==false?"checked":""}></label>
-  <label>Batas ukuran file PDF (MB)<input type="number" id="sy-m" step="0.5" min="1" max="50" value="${Number(s.maxPdfSizeMb)||12}"></label>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn pri sm" onclick="saveSystemSettings()">Simpan pengaturan</button><button class="btn sm" onclick="forceSyncFirebaseNow()">Sinkronkan ke Firebase</button><button class="btn sm dgr" onclick="resetDefaultCatalog()">Reset koleksi bawaan</button></div></div>
-
-  <div class="card" style="background:var(--alt)"><h4>Akun admin</h4><form onsubmit="createAdminAccount(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"><input id="na-n" placeholder="Nama pengurus" required><input id="na-u" placeholder="User ID admin" required><input id="na-p" type="password" placeholder="Kata sandi admin" required><button class="btn pri">Buat akun admin</button></form>
-  ${S.adminAccounts.length?S.adminAccounts.map(a=>`<div class="row" style="background:var(--sf)"><div><b>${esc(a.name)}</b><small>ID: ${esc(a.userId)}</small></div><button class="btn sm dgr" onclick="deleteAdminAccount('${a.id}')">Hapus akses</button></div>`).join(""):'<p style="color:var(--mu);margin:0">Belum ada akun admin.</p>'}</div>`;
- }
- $("#mg-b").innerHTML=h;openModal("m-mg")
-}
-
-function saveOwnAccountCredentials(){
-  if(!isAdm())return;
-  const newName = ($("#acc-chg-name")?.value || "").trim();
-  const newUid = ($("#acc-chg-uid")?.value || "").trim();
-  const newPwd = $("#acc-chg-pwd")?.value || "";
-  if(!newName || !newUid){showToast("Nama akun dan User ID wajib diisi");return;}
-  if(newPwd && newPwd.length < 4){showToast("Kata sandi minimal 4 karakter");return;}
-
-  if(isSuper()){
-    const sa = saCfg();
-    const effectivePwd = newPwd ? newPwd : atob(sa.passHash).split("|:|")[1];
-    sa.name = newName;
-    sa.userId = newUid;
-    sa.passHash = btoa(`${newUid}|:|${effectivePwd}`);
-    S.session.name = newName;
-    S.session.id = newUid;
-    getUserProfile(key()).displayName = newName;
-    persistAll(true);
-    renderAll();
-    openManagementPanel();
-    showToast("Nama & kata sandi Super Admin diperbarui");
-    return;
-  }
-
-  const idx = S.adminAccounts.findIndex(a => a.id === S.session.accountId || a.userId === S.session.id);
-  if(idx > -1){
-    if(S.adminAccounts.some((a,i)=>i!==idx && a.userId===newUid)){
-      showToast("User ID sudah dipakai akun Admin lain");
-      return;
-    }
-    const existingHash = S.adminAccounts[idx].passHash;
-    S.adminAccounts[idx].name = newName;
-    S.adminAccounts[idx].userId = newUid;
-    if(newPwd) S.adminAccounts[idx].passHash = btoa(newPwd);
-    else S.adminAccounts[idx].passHash = existingHash;
-    S.session.name = newName;
-    S.session.id = newUid;
-    getUserProfile(key()).displayName = newName;
-    persistAll(true);
-    renderAll();
-    openManagementPanel();
-    showToast("Nama & kata sandi Admin diperbarui");
-  }
-}
-
-function saveSuperAdminVisuals(){
-  if(!isSuper())return;
-  const t = ($("#sa-title")?.value || "").trim();
-  const hr = ($("#sa-hero")?.value || "").trim();
-  const an = ($("#sa-ann")?.value || "").trim();
-  const ac = $("#sa-acc")?.value || "";
-  const gr = $("#sa-grid")?.value || "";
-  if(t) S.siteConfig.title = t;
-  S.siteConfig.heroHeading = hr;
-  if(an) S.siteConfig.announcement = an;
-  S.siteConfig.accentColor = ac;
-  S.siteConfig.gridMin = gr;
-  persistAll(true);
-  renderAll();
-  showToast("Tampilan website diperbarui");
-}
-
-async function generateCodeWithGemini(){
-  if(!isSuper())return;
-  const apiKey = ($("#gem-key")?.value || "").trim();
-  const promptText = ($("#gem-prompt")?.value || "").trim();
-  if(!apiKey){showToast("Masukkan Gemini API Key terlebih dahulu");return;}
-  if(!promptText){showToast("Tuliskan instruksi perubahan struktur kode");return;}
-  sessionStorage.setItem("iad_gemini_key", apiKey);
-  showToast("Memproses struktur kode dengan Gemini AI...");
-  try{
-    const sysPrompt = `Kamu adalah asisten pengembang frontend untuk aplikasi web Perpustakaan Digital IAD Paser (vanilla HTML/CSS/JS).
-Balas HANYA dengan objek JSON valid tanpa markdown fence:
-{"css":"...","js":"...","note":"..."}
-Aturan:
-- "css": aturan CSS tambahan yang aman untuk menata elemen halaman (.bk, .hero, .card, .top, dll).
-- "js": kode JS singkat yang aman (tersedia parameter S, showToast, renderAll), tanpa memanggil eval atau menghapus listener utama.
-- "note": ringkasan singkat dalam bahasa Indonesia.`;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        contents:[{parts:[{text:`${sysPrompt}\n\nInstruksi Super Admin: ${promptText}`}]}],
-        generationConfig:{responseMimeType:"application/json"}
-      })
-    });
-    if(!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    const cleaned = raw.replace(/^```json\s*/i,"").replace(/```$/i,"").trim();
-    const parsed = JSON.parse(cleaned);
-    if(typeof parsed.css==="string" && $("#gem-css")) $("#gem-css").value = parsed.css;
-    if(typeof parsed.js==="string" && $("#gem-js")) $("#gem-js").value = parsed.js;
-    applyDynamicCodeInputs();
-    showToast(parsed.note || "Struktur kode dari Gemini AI diterapkan");
-  }catch(e){
-    showToast("Gagal memanggil Gemini AI. Periksa API Key atau koneksi.");
-  }
-}
-
-function applyDynamicCodeInputs(){
-  if(!isSuper())return;
-  const k = ($("#gem-key")?.value || "").trim();
-  if(k) sessionStorage.setItem("iad_gemini_key", k);
-  S.siteConfig.customCss = $("#gem-css")?.value ?? S.siteConfig.customCss ?? "";
-  S.siteConfig.customJs = $("#gem-js")?.value ?? S.siteConfig.customJs ?? "";
-  lastAppliedJs = "";
-  persistAll(true);
-  applyDynamicCode();
-  showToast("Struktur CSS/JS kustom diterapkan");
-}
-
-function resetDynamicCodeInputs(){
-  if(!isSuper())return;
-  S.siteConfig.customCss = "";
-  S.siteConfig.customJs = "";
-  lastAppliedJs = "";
-  persistAll(true);
-  applyDynamicCode();
-  openManagementPanel();
-  showToast("Struktur kode kustom direset");
-}
-
-function handleAdminLogoUpload(e){const f=e.target.files[0];if(!f)return;if(f.size>1.5*1048576){showToast("Ukuran file logo maksimal 1,5 MB");return}const r=new FileReader();r.onload=ev=>{S.siteConfig.logoDataUrl=ev.target.result;S.siteConfig.logoEmoji="";persistAll(true);renderAll();openManagementPanel();showToast("Logo website diperbarui")};r.readAsDataURL(f)}
-function resetLogo(){S.siteConfig.logoEmoji=S.siteConfig.logoDataUrl="";persistAll(true);renderAll();openManagementPanel();showToast("Logo dikembalikan ke bawaan")}
-function saveAdminIdentitySettings(){if(!isAdm())return;const t=$("#ac-t").value.trim(),b=$("#ac-b").value.trim();if(t)S.siteConfig.title=t;if(b)S.siteConfig.announcement=b;persistAll(true);renderAll();openManagementPanel();showToast("Judul web dan pengumuman disimpan")}
-function saveSystemSettings(){if(!isSuper())return;const m=parseFloat($("#sy-m").value);S.siteConfig.systemConfig={autoApproveUploads:$("#sy-a").checked,showAnnouncement:$("#sy-s").checked,enableOpenSourceTab:$("#sy-o").checked,maxPdfSizeMb:!isNaN(m)&&m>0?m:12};persistAll(true);renderAll();openManagementPanel();showToast("Pengaturan sistem disimpan")}
-async function forceSyncFirebaseNow(){if(!isSuper())return;await pushStateToFirebase();showToast("Data disinkronkan ke Firebase")}
-function resetDefaultCatalog(){if(!isSuper()||!confirm("Kembalikan koleksi ke 6 buku bawaan? Buku unggahan akan hilang dari katalog."))return;S.books=[...DEFAULT_BOOKS];persistAll(true);renderAll();openManagementPanel();showToast("Koleksi dikembalikan ke data awal")}
-function approveBook(id){const b=S.books.find(x=>x.id===id);if(b)b.status="approved";persistAll(true);renderAll();openManagementPanel();showToast("E-book disetujui dan tayang di katalog")}
-function removeBook(id){if(!confirm("Hapus e-book ini secara permanen?"))return;const t=S.books.find(x=>x.id===id);if(t&&t.type==="pdf")deletePdfFromFirebase(id);S.books=S.books.filter(x=>x.id!==id);persistAll(true);renderAll();openManagementPanel();showToast("E-book dihapus")}
-function createAdminAccount(e){e.preventDefault();if(!isSuper())return;const n=$("#na-n").value.trim(),u=$("#na-u").value.trim(),p=$("#na-p").value;if(S.adminAccounts.some(a=>a.userId===u)){showToast("User ID sudah digunakan");return}
- S.adminAccounts.push({id:"adm-"+Date.now(),name:n,userId:u,passHash:btoa(p)});persistAll(true);openManagementPanel();showToast(`Akun admin untuk ${n} dibuat`)}
-function deleteAdminAccount(id){if(!isSuper())return;S.adminAccounts=S.adminAccounts.filter(a=>a.id!==id);persistAll(true);openManagementPanel();showToast("Akun admin dihapus")}
-
-/* === 12. NAVIGASI, TEMA, BAGIKAN === */
-function selectCategory(c){S.cat=c;renderCats();renderCatalog();document.getElementById("koleksi").scrollIntoView()}
-function handleGlobalSearch(go){S.q=$("#gs").value;renderCatalog();if(go)document.getElementById("koleksi").scrollIntoView()}
-function toggleTheme(){const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=d?"light":"dark";try{localStorage.setItem("iad_theme_v2",r.dataset.theme)}catch(e){}}
-try{const t=localStorage.getItem("iad_theme_v2");if(t)document.documentElement.dataset.theme=t}catch(e){}
-function shareCurrentBook(){if(!S.active)return;const t=`Membaca "${S.active.title}" oleh ${S.active.author} di Perpustakaan Digital IAD Paser.`;
- if(navigator.share)navigator.share({title:S.active.title,text:t,url:location.href}).catch(()=>{});else{navigator.clipboard?.writeText(`${t} ${location.href}`).then(()=>showToast("Tautan dan info buku disalin"),()=>showToast("Gagal menyalin tautan"))}}
-document.querySelectorAll("dialog").forEach(d=>{if(d.id!=="rd")d.addEventListener("click",e=>{if(e.target===d)d.close()})});
-const dev=$("#dev");if(!matchMedia("(prefers-reduced-motion:reduce)").matches){let q=0;const f=()=>{dev.style.transform=`scale(${.92+.08*Math.min(1,scrollY/380)})`;q=0};f();addEventListener("scroll",()=>{if(!q)q=requestAnimationFrame(f)},{passive:true})}
-
-/* === BOOT === */
-loadState();renderAll();pullStateFromFirebase(true);
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullStateFromFirebase(false)});
-</script>
-</body>
-</html>
+function cardHtml(b,mode){
+  const lk=(S.likes[key()]||[]).includes(b.id),os=mode==="os",ext=safeUrl(b.externalUrl);
+  const bm=S.bookmarks[b.id];
+  const bmTag=bm&&bm.page>1?`<span class="bm-badge">Terakhir: Hal. ${bm.page}</span>`:"";
+  const readLabel=bm&&bm.page>1?`Lanjut Hal. ${bm.page}`:"Baca";
+  return `<article class="bk"><div class="cvw">${bmTag}<button class="lk" aria-pressed="${lk}" aria-label="Sukai buku" onclick="toggleBookLike('${b.id}')"><svg class="i"><use href="#ht"/></svg></button>
+<div class="cv" style="background:${b.coverGradient||PAL[0]}">${b.coverImg?`<img src="${esc(b.coverImg)}" alt="" onerror
