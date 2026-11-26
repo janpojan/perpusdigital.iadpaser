@@ -757,7 +757,7 @@ async function searchOpenSourceBooks(){const q=($("#osq").value||"literature").t
  catch(e){const l=q.toLowerCase(),fb=CURATED.filter(b=>(b.title+b.author+b.description).toLowerCase().includes(l));S.os=fb.length?fb:[...CURATED];st.textContent="Menampilkan koleksi terbuka pilihan";renderOS()}}
 function quickOpenSourceTopic(t,btn){document.querySelectorAll(".tp").forEach(c=>c.classList.remove("on"));btn.classList.add("on");$("#osq").value=t;searchOpenSourceBooks()}
 
-/* === 7. PEMBACA, TANDA TERAKHIR BACA, PDF SCAN + OCR KATA, STABILO & HAPUS LANGSUNG === */
+/* === 7. PEMBACA, TANDA TERAKHIR BACA, PDF PENUH + OCR KATA, STABILO & HAPUS LANGSUNG === */
 function dataUrlToBytes(u){const b=atob((u.split(",")[1]||"").trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
 
 function updateBookmarkProgress(bookId, pageNum, totalPages, scrollTopVal){
@@ -844,50 +844,123 @@ async function extractTextFromScanCanvas(pageNum){
   }
 }
 
-async function renderPdfPages(u,el,savedBookmark){
+async function renderPdfPages(u, el, savedBookmark){
   if(!window.pdfjsLib){
     el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;
     return;
   }
   try{
-    const doc=await pdfjsLib.getDocument({data:dataUrlToBytes(u)}).promise,n=doc.numPages;
+    const doc = await pdfjsLib.getDocument({data: dataUrlToBytes(u)}).promise;
+    const n = doc.numPages;
     S.totalPages = n;
-    el.innerHTML=`<div class="row"><div><b>PDF (termasuk hasil scan), ${n} halaman</b><small>Klik "Baca Teks Gambar" pada halaman tertentu untuk memblok dan menandai kata.</small></div><a class="btn sm" href="${u}" download="dokumen.pdf">Unduh PDF</a></div><div id="pgs"></div>`;
-    const L=$("#pgs"),mx=Math.min(n,35);
-    const targetLastPage = savedBookmark && savedBookmark.page ? Math.min(mx, savedBookmark.page) : 1;
 
-    for(let i=1;i<=mx;i++){
-      const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),tw=Math.min(680,Math.max(280,el.clientWidth-24)),v=pg.getViewport({scale:Math.min(1.6,Math.max(.85,tw/v0.width))});
-      const c=document.createElement("div");
-      c.className="scan" + (i===targetLastPage && targetLastPage>1 ? " last-read-target" : "");
+    el.innerHTML = `
+      <div class="row">
+        <div>
+          <b>PDF lengkap (termasuk hasil scan), ${n} halaman</b>
+          <small>Seluruh halaman terbuka di sini tanpa perlu mengunduh. Klik "Baca Teks Gambar" pada halaman scan untuk memblok kata.</small>
+        </div>
+        <span class="tp on" style="cursor:default">Total ${n} Hal.</span>
+      </div>
+      <div id="pgs"></div>
+    `;
+
+    const L = $("#pgs");
+    const targetLastPage = savedBookmark && savedBookmark.page ? Math.min(n, Math.max(1, savedBookmark.page)) : 1;
+    const renderedPages = new Set();
+    const renderingPages = new Set();
+
+    function createPageCard(i){
+      const c = document.createElement("div");
+      c.className = "scan" + (i === targetLastPage && targetLastPage > 1 ? " last-read-target" : "");
       c.dataset.pageNum = String(i);
-      const badgeLast = (i===targetLastPage && targetLastPage>1) ? " - Tanda terakhir baca" : "";
-      c.innerHTML=`<div class="scan-head"><small>Halaman ${i} dari ${n}${badgeLast}</small><button type="button" class="btn sm ocr-btn" onclick="extractTextFromScanCanvas(${i})">Baca Teks Gambar</button></div>`;
-      const cv=document.createElement("canvas");
-      cv.width=Math.floor(v.width);
-      cv.height=Math.floor(v.height);
+      const badgeLast = (i === targetLastPage && targetLastPage > 1) ? " - Tanda terakhir baca" : "";
+      c.innerHTML = `
+        <div class="scan-head">
+          <small>Halaman ${i} dari ${n}${badgeLast}</small>
+          <button type="button" class="btn sm ocr-btn" onclick="extractTextFromScanCanvas(${i})">Baca Teks Gambar</button>
+        </div>
+      `;
+      const cv = document.createElement("canvas");
+      cv.style.minHeight = "260px";
       c.appendChild(cv);
-      L.appendChild(c);
-      await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;
+      return c;
     }
-    if(n>mx){
-      const p=document.createElement("p");
-      p.style.cssText="text-align:center;color:var(--mu);font-size:14px";
-      p.textContent=`Menampilkan ${mx} halaman awal. Unduh PDF untuk membuka seluruh ${n} halaman.`;
-      L.appendChild(p);
+
+    async function renderSinglePdfPage(pageNum){
+      if(pageNum < 1 || pageNum > n) return;
+      if(renderedPages.has(pageNum) || renderingPages.has(pageNum)) return;
+      renderingPages.add(pageNum);
+
+      const card = L.querySelector(`.scan[data-page-num="${pageNum}"]`);
+      const cv = card ? card.querySelector("canvas") : null;
+      if(!cv){ renderingPages.delete(pageNum); return; }
+
+      try{
+        const pg = await doc.getPage(pageNum);
+        const v0 = pg.getViewport({scale: 1});
+        const tw = Math.min(680, Math.max(280, (el.clientWidth || 680) - 24));
+        const scale = Math.min(1.5, Math.max(0.85, tw / v0.width));
+        const v = pg.getViewport({scale});
+        cv.width = Math.floor(v.width);
+        cv.height = Math.floor(v.height);
+        cv.style.minHeight = "";
+        const ctx = cv.getContext("2d");
+        await pg.render({canvasContext: ctx, viewport: v}).promise;
+        renderedPages.add(pageNum);
+      }catch(err){
+        console.warn("Gagal render halaman PDF " + pageNum, err);
+      }finally{
+        renderingPages.delete(pageNum);
+      }
     }
+
+    const frag = document.createDocumentFragment();
+    for(let i = 1; i <= n; i++){
+      frag.appendChild(createPageCard(i));
+    }
+    L.appendChild(frag);
+
+    const observer = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          const pNum = parseInt(entry.target.dataset.pageNum, 10);
+          if(pNum){
+            renderSinglePdfPage(pNum);
+            if(pNum + 1 <= n) renderSinglePdfPage(pNum + 1);
+            if(pNum - 1 >= 1) renderSinglePdfPage(pNum - 1);
+          }
+        }
+      });
+    }, {
+      root: $("#pg"),
+      rootMargin: "350px 0px",
+      threshold: 0.01
+    });
+
+    L.querySelectorAll(".scan").forEach(card => observer.observe(card));
+
+    const initialPages = [targetLastPage];
+    for(let k = 1; k <= 3; k++){
+      if(targetLastPage + k <= n) initialPages.push(targetLastPage + k);
+      if(targetLastPage - k >= 1) initialPages.push(targetLastPage - k);
+    }
+    for(const p of initialPages){
+      await renderSinglePdfPage(p);
+    }
+
     if(targetLastPage > 1){
       const targetEl = L.querySelector(`.scan[data-page-num="${targetLastPage}"]`);
       if(targetEl){
-        targetEl.scrollIntoView({behavior:"auto", block:"start"});
+        targetEl.scrollIntoView({behavior: "auto", block: "start"});
         updateBookmarkProgress(S.active.id, targetLastPage, n, $("#pg").scrollTop);
-        showToast(`Melanjutkan dari tanda terakhir baca: Halaman ${targetLastPage}`);
+        showToast(`Melanjutkan dari tanda terakhir baca: Halaman ${targetLastPage} dari ${n}`);
       }
     } else {
       updateBookmarkProgress(S.active.id, 1, n, 0);
     }
   }catch(e){
-    el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;
+    el.innerHTML = `<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;
   }
 }
 
