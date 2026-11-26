@@ -384,4 +384,611 @@ function cardHtml(b,mode){
   const bmTag=bm&&bm.page>1?`<span class="bm-badge">Terakhir: Hal. ${bm.page}</span>`:"";
   const readLabel=bm&&bm.page>1?`Lanjut Hal. ${bm.page}`:"Baca";
   return `<article class="bk"><div class="cvw">${bmTag}<button class="lk" aria-pressed="${lk}" aria-label="Sukai buku" onclick="toggleBookLike('${b.id}')"><svg class="i"><use href="#ht"/></svg></button>
-<div class="cv" style="background:${b.coverGradient||PAL[0]}">${b.coverImg?`<img src="${esc(b.coverImg)}" alt="" onerror
+<div class="cv" style="background:${b.coverGradient||PAL[0]}">${b.coverImg?`<img src="${esc(b.coverImg)}" alt="" onerror="this.remove()">`:""}<div class="ov"><b>${esc(b.title)}</b><i>${esc(b.author)}</i></div></div></div>
+<span class="ct">${esc(os?b.source:b.category)}</span><h3>${esc(b.title)}</h3><small>${esc(b.author)}${os?", "+esc(b.language):""}</small><p class="ds">${esc(b.description)}</p>
+<div class="ac"><button class="btn pri sm" onclick="openBookReader('${b.id}','${mode}')">${readLabel}</button>${os&&ext!=="#"?`<a class="btn sm" href="${esc(ext)}" target="_blank" rel="noopener noreferrer">Naskah penuh</a>`:""}</div></article>`;
+}
+function renderCatalog(){const q=S.q.toLowerCase().trim();const f=S.books.filter(b=>b.status==="approved"&&(S.cat==="Semua Kategori"||b.category===S.cat)&&(!q||[b.title,b.author,b.category,b.description].join(" ").toLowerCase().includes(q)));
+ $("#cgrid").innerHTML=f.length?f.map(b=>cardHtml(b,"local")).join(""):'<div class="empty"><p>Belum ada buku yang sesuai. Coba kategori lain atau unggah e-book baru.</p><button class="btn pri" onclick="handleUploadClick()">Unggah e-book</button></div>'}
+function renderOS(){$("#ogrid").innerHTML=S.os.map(b=>cardHtml(b,"os")).join("")}
+const TOPICS=[["Sastra Klasik","classic literature"],["Hukum & Keadilan","law and justice"],["Pendidikan & Keluarga","education family"],["Sejarah & Peradaban","history asia"],["Kesehatan","health wellness"]];
+$("#tps").innerHTML=TOPICS.map(t=>`<button class="tp" onclick="quickOpenSourceTopic('${t[1]}',this)">${t[0]}</button>`).join("");
+
+/* === 6. KATALOG OPEN-SOURCE === */
+async function searchOpenSourceBooks(){const q=($("#osq").value||"literature").trim(),lang=$("#osl").value,st=$("#osst");st.textContent="Memuat katalog terbuka...";
+ try{const ct=new AbortController(),to=setTimeout(()=>ct.abort(),7000);let u=`https://gutendex.com/books/?search=${encodeURIComponent(q)}`;if(lang)u+=`&languages=${encodeURIComponent(lang)}`;
+  const r=await fetch(u,{signal:ct.signal});clearTimeout(to);if(!r.ok)throw 0;const d=await r.json();
+  if(d&&Array.isArray(d.results)&&d.results.length){S.os=d.results.slice(0,12).map((it,i)=>{const au=it.authors&&it.authors[0]?it.authors[0].name:"Penulis klasik",sub=(it.subjects||[]).slice(0,2).join(", ")||"Koleksi domain publik",f=it.formats||{};
+   return{id:`gutendex-${it.id}`,title:it.title,author:au,language:(it.languages&&it.languages[0]||"en").toUpperCase(),source:`Project Gutenberg #${it.id}`,description:sub,coverGradient:PAL[i%PAL.length],coverImg:f["image/jpeg"]||"",externalUrl:safeUrl(f["text/html"]||f["text/plain; charset=utf-8"]||f["text/plain"]||`https://www.gutenberg.org/ebooks/${it.id}`),
+   content:[`Judul: ${it.title}. Karya ${au}.`,`Sumber terbuka: ${sub}. Buku ini koleksi domain publik internasional yang tersedia bebas melalui Project Gutenberg.`,"Anda dapat menandai kutipan penting di halaman pratinjau ini dengan stabilo, atau membuka naskah lengkap lewat tautan sumber resmi."]}});
+   st.textContent=`${S.os.length} buku ditemukan`;renderOS();return}throw 0}
+ catch(e){const l=q.toLowerCase(),fb=CURATED.filter(b=>(b.title+b.author+b.description).toLowerCase().includes(l));S.os=fb.length?fb:[...CURATED];st.textContent="Menampilkan koleksi terbuka pilihan";renderOS()}}
+function quickOpenSourceTopic(t,btn){document.querySelectorAll(".tp").forEach(c=>c.classList.remove("on"));btn.classList.add("on");$("#osq").value=t;searchOpenSourceBooks()}
+
+/* === 7. PEMBACA, TANDA TERAKHIR BACA, PDF SCAN + OCR KATA, STABILO === */
+function dataUrlToBytes(u){const b=atob((u.split(",")[1]||"").trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
+
+function updateBookmarkProgress(bookId, pageNum, totalPages, scrollTopVal){
+  if(!bookId)return;
+  S.currentPage = Math.max(1, pageNum || 1);
+  if(totalPages) S.totalPages = Math.max(1, totalPages);
+  S.bookmarks[bookId] = {
+    page: S.currentPage,
+    total: S.totalPages,
+    scrollTop: typeof scrollTopVal === "number" ? Math.round(scrollTopVal) : 0,
+    updatedAt: new Date().toLocaleDateString("id-ID")
+  };
+  const posEl = $("#rd-pos-info");
+  if(posEl){
+    posEl.textContent = S.totalPages > 1
+      ? `Tanda terakhir baca: Halaman ${S.currentPage} dari ${S.totalPages}`
+      : `Tanda terakhir baca: Bagian ${S.currentPage}`;
+  }
+  if(S.active){
+    $("#rs").textContent = `${S.active.author} - ${S.active.category || S.active.source} - Hal. ${S.currentPage}`;
+  }
+  const hItem = S.history.find(h => h.bookId === bookId);
+  if(hItem){
+    hItem.lastPage = S.currentPage;
+    hItem.totalPages = S.totalPages;
+    hItem.lastRead = new Date().toLocaleDateString("id-ID");
+  }
+}
+
+function trackReaderScroll(){
+  if(!$("#rd").open || !S.active)return;
+  const pgEl = $("#pg");
+  if(!pgEl)return;
+  const markers = pgEl.querySelectorAll("[data-page-num]");
+  if(markers.length){
+    const containerTop = pgEl.getBoundingClientRect().top;
+    let activePage = 1;
+    markers.forEach(m => {
+      const rect = m.getBoundingClientRect();
+      if(rect.top - containerTop <= 140){
+        activePage = parseInt(m.dataset.pageNum, 10) || 1;
+      }
+    });
+    updateBookmarkProgress(S.active.id, activePage, markers.length, pgEl.scrollTop);
+  } else {
+    const ratio = pgEl.scrollHeight > pgEl.clientHeight
+      ? pgEl.scrollTop / (pgEl.scrollHeight - pgEl.clientHeight)
+      : 0;
+    const estPage = Math.max(1, Math.round(ratio * Math.max(1, S.totalPages - 1)) + 1);
+    updateBookmarkProgress(S.active.id, estPage, S.totalPages, pgEl.scrollTop);
+  }
+  saveLocal();
+}
+$("#pg").addEventListener("scroll", trackReaderScroll, {passive:true});
+
+async function extractTextFromScanCanvas(pageNum){
+  const card = document.querySelector(`.scan[data-page-num="${pageNum}"]`);
+  if(!card)return;
+  const cv = card.querySelector("canvas");
+  const btn = card.querySelector(".ocr-btn");
+  if(!cv)return;
+  if(card.querySelector(".scan-ocr-text")){
+    showToast(`Teks halaman ${pageNum} sudah siap diblok`);
+    return;
+  }
+  if(!window.Tesseract){
+    showToast("Layanan pembaca teks gambar sedang tidak tersedia, gunakan fitur Catat Kata di samping.");
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = "Membaca teks gambar..."; }
+  showToast(`Memindai teks halaman ${pageNum}...`);
+  try{
+    const res = await Tesseract.recognize(cv, "ind+eng");
+    const rawText = (res && res.data && res.data.text ? res.data.text : "").trim();
+    const box = document.createElement("div");
+    box.className = "scan-ocr-text";
+    box.innerHTML = `<span class="scan-ocr-label">Teks Halaman ${pageNum} (Blok kata untuk menandai atau stabilo)</span>${rawText ? esc(rawText).replace(/\n+/g,"<br>") : "Teks tidak terbaca jelas dari gambar ini. Gunakan kolom Tandai Kata di panel samping."}`;
+    card.appendChild(box);
+    if(btn){ btn.textContent = "Teks Siap Diblok"; }
+    showToast(`Kata di halaman ${pageNum} sudah bisa diblok dan ditandai`);
+  }catch(e){
+    if(btn){ btn.disabled = false; btn.textContent = "Baca Teks Gambar"; }
+    showToast("Gagal memindai teks gambar. Gunakan kolom Tandai Kata di samping.");
+  }
+}
+
+async function renderPdfPages(u,el,savedBookmark){
+  if(!window.pdfjsLib){
+    el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;
+    return;
+  }
+  try{
+    const doc=await pdfjsLib.getDocument({data:dataUrlToBytes(u)}).promise,n=doc.numPages;
+    S.totalPages = n;
+    el.innerHTML=`<div class="row"><div><b>PDF (termasuk hasil scan), ${n} halaman</b><small>Klik "Baca Teks Gambar" pada halaman tertentu untuk memblok dan menandai kata.</small></div><a class="btn sm" href="${u}" download="dokumen.pdf">Unduh PDF</a></div><div id="pgs"></div>`;
+    const L=$("#pgs"),mx=Math.min(n,35);
+    const targetLastPage = savedBookmark && savedBookmark.page ? Math.min(mx, savedBookmark.page) : 1;
+
+    for(let i=1;i<=mx;i++){
+      const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),tw=Math.min(680,Math.max(280,el.clientWidth-24)),v=pg.getViewport({scale:Math.min(1.6,Math.max(.85,tw/v0.width))});
+      const c=document.createElement("div");
+      c.className="scan" + (i===targetLastPage && targetLastPage>1 ? " last-read-target" : "");
+      c.dataset.pageNum = String(i);
+      const badgeLast = (i===targetLastPage && targetLastPage>1) ? " - Tanda terakhir baca" : "";
+      c.innerHTML=`<div class="scan-head"><small>Halaman ${i} dari ${n}${badgeLast}</small><button type="button" class="btn sm ocr-btn" onclick="extractTextFromScanCanvas(${i})">Baca Teks Gambar</button></div>`;
+      const cv=document.createElement("canvas");
+      cv.width=Math.floor(v.width);
+      cv.height=Math.floor(v.height);
+      c.appendChild(cv);
+      L.appendChild(c);
+      await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;
+    }
+    if(n>mx){
+      const p=document.createElement("p");
+      p.style.cssText="text-align:center;color:var(--mu);font-size:14px";
+      p.textContent=`Menampilkan ${mx} halaman awal. Unduh PDF untuk membuka seluruh ${n} halaman.`;
+      L.appendChild(p);
+    }
+    if(targetLastPage > 1){
+      const targetEl = L.querySelector(`.scan[data-page-num="${targetLastPage}"]`);
+      if(targetEl){
+        targetEl.scrollIntoView({behavior:"auto", block:"start"});
+        updateBookmarkProgress(S.active.id, targetLastPage, n, $("#pg").scrollTop);
+        showToast(`Melanjutkan dari tanda terakhir baca: Halaman ${targetLastPage}`);
+      }
+    } else {
+      updateBookmarkProgress(S.active.id, 1, n, 0);
+    }
+  }catch(e){
+    el.innerHTML=`<iframe class="pdf" src="${u}" title="Dokumen PDF"></iframe>`;
+  }
+}
+
+async function openBookReader(id,src){
+  const b=src==="os"?S.os.find(x=>x.id===id):S.books.find(x=>x.id===id);
+  if(!b)return;
+  S.active=b;
+  const savedBm = S.bookmarks[b.id] || {page:1, total:1, scrollTop:0};
+  S.currentPage = savedBm.page || 1;
+  S.totalPages = savedBm.total || 1;
+
+  S.history=[{bookId:b.id,title:b.title,author:b.author,lastPage:S.currentPage,totalPages:S.totalPages,lastRead:new Date().toLocaleDateString("id-ID")},...S.history.filter(h=>h.bookId!==b.id)].slice(0,20);
+  persistAll(false);renderStats();renderHistory();
+  $("#rt").textContent=b.title;
+  $("#rs").textContent=`${b.author} - ${b.category||b.source} - Hal. ${S.currentPage}`;
+  updateLikeBtn();
+  const a=$("#rb");
+
+  if(b.type==="pdf"){
+    a.innerHTML='<p style="text-align:center;color:var(--mu)">Memuat halaman PDF...</p>';
+    openModal("rd");
+    let u=await getBlobFromIDB(`pdf_${b.id}`);
+    if(!u){u=await getPdfFromFirebase(b.id);if(u)await saveBlobToIDB(`pdf_${b.id}`,u)}
+    if(u)await renderPdfPages(u,a,savedBm);
+    else a.innerHTML="<p>File PDF tidak ditemukan di penyimpanan lokal maupun cloud.</p>";
+  } else {
+    const ps=Array.isArray(b.content)?b.content:[String(b.content||b.description)],ext=safeUrl(b.externalUrl);
+    S.totalPages = Math.max(1, ps.length);
+    a.innerHTML=`<h2 style="font:600 28px var(--tx);letter-spacing:-.03em;margin-bottom:6px">${esc(b.title)}</h2><p style="color:var(--mu);font:15px var(--tx)">Oleh ${esc(b.author)}</p>`+
+      ps.map((p,idx)=>`<p data-page-num="${idx+1}">${esc(p)}</p>`).join("")+
+      (ext!=="#"?`<p style="font:16px var(--tx)"><a class="btn pri sm" href="${esc(ext)}" target="_blank" rel="noopener noreferrer">Buka naskah lengkap di sumber asli</a></p>`:"");
+    openModal("rd");
+    const pgEl = $("#pg");
+    if(savedBm.page > 1){
+      const targetP = a.querySelector(`[data-page-num="${savedBm.page}"]`);
+      if(targetP) targetP.scrollIntoView({behavior:"auto", block:"start"});
+      else if(savedBm.scrollTop) pgEl.scrollTop = savedBm.scrollTop;
+      updateBookmarkProgress(b.id, savedBm.page, S.totalPages, pgEl.scrollTop);
+      showToast(`Melanjutkan dari tanda terakhir baca: Bagian ${savedBm.page}`);
+    } else {
+      pgEl.scrollTop = 0;
+      updateBookmarkProgress(b.id, 1, S.totalPages, 0);
+    }
+  }
+  renderAnnotations();
+}
+
+function closeReader(){
+  if(S.active){
+    const pgEl = $("#pg");
+    updateBookmarkProgress(S.active.id, S.currentPage, S.totalPages, pgEl ? pgEl.scrollTop : 0);
+    persistAll(false);
+    renderCatalog();
+    renderOS();
+    renderHistory();
+    showToast(`Tanda terakhir baca disimpan (Halaman ${S.currentPage})`);
+  }
+  $("#rd").close();
+  $("#pal").style.display="none";
+  S.active=null;
+}
+
+function handleTextSelection(){
+  if(!$("#rd").open)return;
+  const pal=$("#pal"),s=getSelection(),t=s?s.toString().trim():"";
+  if(t.length>=2&&t.length<=400&&s.rangeCount){
+    const r=s.getRangeAt(0).getBoundingClientRect();
+    pal.style.display="flex";
+    pal.style.top=Math.max(60,r.top-52)+"px";
+    pal.style.left=Math.min(innerWidth-280,Math.max(12,r.left))+"px";
+  } else pal.style.display="none";
+}
+document.addEventListener("mouseup",handleTextSelection);
+document.addEventListener("touchend",()=>setTimeout(handleTextSelection,120));
+
+function applyHighlight(c){
+  const s=getSelection(),t=s?s.toString().trim():"";
+  if(!t||!S.active)return;
+  try{const m=document.createElement("mark");m.className=c;s.getRangeAt(0).surroundContents(m)}catch(e){}
+  S.highlights.unshift({id:"hl-"+Date.now(),bookId:S.active.id,bookTitle:S.active.title,page:S.currentPage,text:t,color:c});
+  s.removeAllRanges();$("#pal").style.display="none";persistAll(false);renderAnnotations();renderStats();renderHistory();showToast("Kalimat berhasil disorot");
+}
+
+function bookmarkSelectedWord(){
+  const s=getSelection(),raw=s?s.toString().trim():"";
+  if(!raw||!S.active)return;
+  const words=raw.split(/\s+/).map(w=>w.replace(/[.,!?;:"()]/g,"")).filter(Boolean);
+  if(!words.length)return;
+  words.slice(0,8).reverse().forEach((w,i)=>{
+    S.markedWords.unshift({id:"wd-"+Date.now()+"-"+i,bookId:S.active.id,bookTitle:S.active.title,page:S.currentPage,word:w});
+  });
+  s.removeAllRanges();$("#pal").style.display="none";persistAll(false);renderAnnotations();renderStats();renderHistory();
+  showToast(words.length>1?`${words.length} kata ditandai`:`Kata "${words[0]}" ditandai`);
+}
+
+function addManualMarkedWord(){
+  if(!S.active)return;
+  const inp=$("#manual-word-input");
+  const raw=(inp.value||"").trim();
+  if(!raw){showToast("Ketik kata yang ingin ditandai");return;}
+  const words=raw.split(/\s+/).map(w=>w.replace(/[.,!?;:"()]/g,"")).filter(Boolean);
+  words.reverse().forEach((w,i)=>{
+    S.markedWords.unshift({id:"wd-"+Date.now()+"-"+i,bookId:S.active.id,bookTitle:S.active.title,page:S.currentPage,word:w});
+  });
+  inp.value="";
+  persistAll(false);renderAnnotations();renderStats();renderHistory();
+  showToast(`${words.length} kata ditandai pada halaman ${S.currentPage}`);
+}
+
+function addManualHighlight(){
+  if(!S.active)return;
+  const inp=$("#manual-word-input");
+  const txt=(inp.value||"").trim();
+  if(!txt){showToast("Ketik kutipan atau kalimat dari halaman ini");return;}
+  S.highlights.unshift({id:"hl-"+Date.now(),bookId:S.active.id,bookTitle:S.active.title,page:S.currentPage,text:txt,color:"hl-yellow"});
+  inp.value="";
+  persistAll(false);renderAnnotations();renderStats();renderHistory();
+  showToast(`Sorotan disimpan pada halaman ${S.currentPage}`);
+}
+
+function renderAnnotations(){
+  if(!S.active)return;
+  const id=S.active.id,h=S.highlights.filter(x=>x.bookId===id),w=S.markedWords.filter(x=>x.bookId===id);
+  $("#rh-l").innerHTML=h.length?h.map(x=>`<div class="qh"><mark class="${esc(x.color)}">${esc(x.text)}</mark>${x.page?`<small>Halaman ${x.page}</small>`:""}</div>`).join(""):'<p>Belum ada.</p>';
+  $("#rw-l").innerHTML=w.length?w.map(x=>`<span class="tp on" style="display:inline-block;margin:0 6px 6px 0;line-height:36px" title="Halaman ${x.page||1}">${esc(x.word)}${x.page?` (Hal.${x.page})`:""}</span>`).join(""):"<p>Belum ada.</p>";
+}
+
+/* === 8. RIWAYAT & SUKA === */
+const srcOf=id=>id.startsWith("os-")||id.startsWith("gutendex-")?"os":"local";
+function renderHistory(){let h="";
+ if(S.highlights.length)h+=`<div class="card"><h4>Kalimat distabilo (${S.highlights.length})</h4>${S.highlights.map(x=>`<div class="row"><div><mark class="${esc(x.color)}">${esc(x.text)}</mark><small>Dari buku: ${esc(x.bookTitle)}${x.page?` - Halaman ${x.page}`:""}</small></div><button class="btn sm dgr" onclick="deleteHighlight('${x.id}')">Hapus</button></div>`).join("")}</div>`;
+ if(S.markedWords.length)h+=`<div class="card"><h4>Kata yang ditandai (${S.markedWords.length})</h4>${S.markedWords.map(w=>`<span class="tp on" style="display:inline-block;margin:0 6px 6px 0;line-height:36px" title="${esc(w.bookTitle)}${w.page?` - Halaman ${w.page}`:""}">${esc(w.word)}${w.page?` (Hal.${w.page})`:""}</span>`).join("")}</div>`;
+ if(S.history.length)h+=`<div class="card"><h4>Terakhir dibaca</h4>${S.history.map(x=>{
+   const bm=S.bookmarks[x.bookId];
+   const pgInfo=bm&&bm.page?`Tanda terakhir: Halaman ${bm.page}${bm.total>1?" dari "+bm.total:""}`:(x.lastPage?`Halaman ${x.lastPage}`:"");
+   return `<div class="row"><div><b>${esc(x.title)}</b><small>${esc(x.author)} - dibaca ${esc(x.lastRead)}${pgInfo?" - "+pgInfo:""}</small></div><button class="btn pri sm" onclick="openBookReader('${x.bookId}','${srcOf(x.bookId)}')">${bm&&bm.page>1?"Lanjut Hal. "+bm.page:"Lanjut baca"}</button></div>`;
+ }).join("")}</div>`;
+ $("#hist").innerHTML=h||'<div class="empty"><p>Belum ada riwayat bacaan atau stabilo. Buka salah satu buku untuk mulai mencatat.</p></div>'}
+function deleteHighlight(id){S.highlights=S.highlights.filter(h=>h.id!==id);persistAll(false);renderStats();renderHistory()}
+function toggleBookLike(id){const k=key();if(!S.likes[k])S.likes[k]=[];const i=S.likes[k].indexOf(id);if(i>-1){S.likes[k].splice(i,1);showToast("Dihapus dari buku yang disukai")}else{S.likes[k].push(id);showToast("Ditambahkan ke buku yang disukai")}persistAll(true);renderCatalog();renderOS();updateLikeBtn()}
+function toggleCurrentReaderLike(){if(S.active)toggleBookLike(S.active.id)}
+function updateLikeBtn(){if(S.active)$("#rlk").textContent=(S.likes[key()]||[]).includes(S.active.id)?"Disukai":"Suka"}
+
+/* === 9. PILIHAN LOGIN (USER BIASA / ADMIN / SUPER ADMIN) & UNGGAH === */
+function switchLoginRoleTab(role){
+  S.loginRoleTab = role;
+  ["user","admin","superadmin"].forEach(r=>{
+    const btn=$("#rtab-"+r);
+    if(btn)btn.setAttribute("aria-pressed", String(r===role));
+  });
+  const isUser = role==="user";
+  $("#login-fields-user").style.display = isUser?"flex":"none";
+  $("#login-fields-staff").style.display = isUser?"none":"flex";
+  $("#gn").required = isUser;
+  $("#ge").required = isUser;
+  $("#lu").required = !isUser;
+  $("#lp").required = !isUser;
+  if(!isUser){
+    $("#staff-login-desc").textContent = role==="superadmin"
+      ? "Masuk sebagai Super Admin untuk mengelola sistem, akun admin, tampilan, dan struktur kode."
+      : "Masuk sebagai Admin untuk memoderasi e-book dan mengatur identitas halaman.";
+  }
+  $("#login-submit-btn").textContent = isUser
+    ? "Lanjutkan dengan Google"
+    : role==="superadmin"
+    ? "Masuk sebagai Super Admin"
+    : "Masuk sebagai Admin";
+}
+function openLoginWithRole(role="user"){
+  switchLoginRoleTab(role);
+  openModal("m-login");
+}
+function verifyStaffCredentials(role, uid, pw){
+  if(role==="superadmin"){
+    const sa=saCfg();
+    if(uid===sa.userId && btoa(`${uid}|:|${pw}`)===sa.passHash){
+      return {role:"superadmin", name:sa.name||"Super Admin IAD", id:sa.userId};
+    }
+    if(btoa(`${uid}|:|${pw}`)===DEFAULT_SA_HASH){
+      return {role:"superadmin", name:sa.name||"Super Admin IAD", id:uid};
+    }
+    return null;
+  }
+  if(role==="admin"){
+    const f=S.adminAccounts.find(a=>a.userId===uid && a.passHash===btoa(pw));
+    if(f)return {role:"admin", name:f.name, id:f.userId, accountId:f.id};
+  }
+  return null;
+}
+function submitLoginByRole(e){
+  e.preventDefault();
+  const role = S.loginRoleTab || "user";
+  if(role==="user"){
+    const n=$("#gn").value.trim(),m=$("#ge").value.trim().toLowerCase();
+    if(!n||!m)return;
+    S.session={role:"user",name:n,email:m,id:m};
+    getUserProfile(key()).displayName=n;
+    persistAll(true);closeModal("m-login");$("#gn").value=$("#ge").value="";renderAll();showToast(`Selamat datang, ${n}`);
+    return;
+  }
+  const uid=$("#lu").value.trim(), pw=$("#lp").value;
+  const ok=verifyStaffCredentials(role, uid, pw);
+  if(!ok){showToast("User ID atau kata sandi tidak valid");return;}
+  S.session=ok;
+  getUserProfile(key()).displayName=ok.name;
+  persistAll(false);closeModal("m-login");$("#lu").value=$("#lp").value="";renderAll();openManagementPanel();showToast(`Masuk sebagai ${ok.name}`);
+}
+function handleUploadClick(){if(!S.session){openLoginWithRole("user");showToast("Silakan masuk terlebih dahulu");return}renderAll();renderPalPicker();openModal("m-up")}
+function renderPalPicker(){$("#pal-pick").innerHTML=PAL.map((g,i)=>`<label><input type="radio" name="cv" style="--c:${g}" ${S.cover===g?"checked":""} onchange="S.cover=PAL[${i}]" aria-label="Warna ${i+1}"></label>`).join("")}
+$("#uc").innerHTML=CATEGORIES.slice(1).map(c=>`<option>${c}</option>`).join("");
+async function submitUploadBook(e){e.preventDefault();if(!S.session)return;const f=$("#uf").files[0];if(!f)return;
+ const id="book-"+Date.now(),t=$("#ut").value.trim(),a=$("#ua").value.trim(),c=$("#uc").value,d=$("#ud").value.trim(),pdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf"),mx=Number(sys().maxPdfSizeMb||12);
+ if(pdf){if(f.size>mx*1048576){showToast(`Ukuran file PDF maksimal ${mx} MB.`);return}
+  const r=new FileReader();r.onload=async ev=>{await saveBlobToIDB(`pdf_${id}`,ev.target.result);await savePdfToFirebase(id,ev.target.result);finalizeBook(id,t,a,c,d,"pdf",[])};r.readAsDataURL(f)}
+ else{const tx=await f.text(),ps=tx.split(/\r?\n+/).map(p=>p.trim()).filter(Boolean);finalizeBook(id,t,a,c,d,"text",ps.length?ps:[tx])}}
+function finalizeBook(id,title,author,category,description,type,content){const ok=isAdm()||Boolean(sys().autoApproveUploads);
+ S.books.unshift({id,title,author,category,description,coverGradient:S.cover,status:ok?"approved":"pending",type,content,uploaderEmail:S.session.email||S.session.name});
+ persistAll(true);closeModal("m-up");["ut","ua","ud","uf"].forEach(i=>$("#"+i).value="");renderAll();showToast(ok?"E-book berhasil diterbitkan ke katalog.":"E-book terkirim ke antrean moderasi admin.")}
+
+/* === 10. PROFIL LITERATUR === */
+function openProfileModal(){if(!S.session){openLoginWithRole("user");return}const k=key(),p=getUserProfile(k),ids=S.likes[k]||[];
+ const mp=new Map([...S.books,...CURATED,...S.os].map(b=>[b.id,b])),liked=ids.map(i=>mp.get(i)).filter(Boolean),up=S.books.filter(b=>b.uploaderEmail===(S.session.email||S.session.name));
+ $("#prof-b").innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="av" style="width:64px;height:64px;font-size:26px">${avatar(p)}</span><div style="flex:1;min-width:180px"><h3 style="font-size:22px">${esc(p.displayName)}</h3><p style="font-size:14px">${esc(S.session.email||S.session.id)}, genre favorit: ${esc(p.favGenre)}</p></div><button class="btn sm dgr" onclick="logoutAccount()">Keluar akun</button></div>
+ <p style="margin-top:12px;color:var(--ink)">${esc(p.bio)}</p><p style="font-style:italic;margin-top:6px">"${esc(p.quote)}"</p>
+ <div class="pst" style="margin:16px 0"><div><b>${liked.length}</b><span>Buku disukai</span></div><div><b>${S.history.length}</b><span>Buku dibaca</span></div><div><b>${S.highlights.length+S.markedWords.length}</b><span>Stabilo dan kata</span></div><div><b>${up.length}</b><span>Karya diunggah</span></div></div>
+ <div class="card" style="background:var(--alt)"><h4>Ubah profil</h4><div style="display:grid;gap:12px"><label>Foto profil (opsional)<input type="file" accept="image/*" onchange="handleProfilePhotoUpload(event)"></label>
+ <label>Nama tampilan<input id="pe-n" value="${esc(p.displayName)}"></label><label>Genre favorit<select id="pe-g">${CATEGORIES.slice(1).map(c=>`<option ${p.favGenre===c?"selected":""}>${c}</option>`).join("")}</select></label>
+ <label>Bio literatur<input id="pe-b" value="${esc(p.bio)}"></label><label>Kutipan favorit<input id="pe-q" value="${esc(p.quote)}"></label><button class="btn pri" onclick="saveProfileEdits()">Simpan profil</button></div></div>
+ <h4 style="margin:6px 0 10px">Rak buku yang disukai (${liked.length})</h4>${liked.length?liked.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>${esc(b.author)}</small></div><button class="btn pri sm" onclick="closeModal('m-prof');openBookReader('${b.id}','${srcOf(b.id)}')">Baca</button></div>`).join(""):'<p>Belum ada buku yang disukai. Tekan ikon hati pada sampul buku.</p>'}`;openModal("m-prof")}
+function handleProfilePhotoUpload(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{getUserProfile(key()).photoDataUrl=ev.target.result;persistAll(true);renderAuth();openProfileModal();showToast("Foto profil diperbarui")};r.readAsDataURL(f)}
+function saveProfileEdits(){const p=getUserProfile(key());p.displayName=$("#pe-n").value.trim()||p.displayName;p.favGenre=$("#pe-g").value;p.bio=$("#pe-b").value.trim();p.quote=$("#pe-q").value.trim();persistAll(true);renderAuth();openProfileModal();showToast("Profil literatur disimpan")}
+function logoutAccount(){S.session=null;persistAll(false);closeModal("m-prof");closeModal("m-mg");renderAll();showToast("Anda telah keluar dari akun")}
+
+/* === 11. AKSES PENGELOLA, GANTI NAMA & PASSWORD, GEMINI AI & PANEL SUPER ADMIN === */
+let tap=0,tapT;$("#sec").addEventListener("click",()=>{tap++;clearTimeout(tapT);tapT=setTimeout(()=>tap=0,1800);if(tap>=5){tap=0;openModal("m-auth")}});
+document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==="A"||e.key==="a")){e.preventDefault();openModal("m-auth")}});
+function submitPrivateAuth(e){e.preventDefault();const role=$("#pr").value,uid=$("#pu").value.trim(),pw=$("#pp").value;
+ const ok=verifyStaffCredentials(role, uid, pw);
+ if(!ok){showToast("Kredensial tidak valid");return}
+ S.session=ok;getUserProfile(key()).displayName=ok.name;persistAll(false);closeModal("m-auth");$("#pu").value=$("#pp").value="";renderAll();openManagementPanel()}
+
+function openManagementPanel(){if(!isAdm())return;const su=isSuper(),s=sys(),sa=saCfg(),pend=S.books.filter(b=>b.status==="pending"),ap=S.books.filter(b=>b.status==="approved");
+ const curAcctName = su ? (sa.name || S.session.name) : (S.session.name || "");
+ const curAcctId = su ? (sa.userId || S.session.id) : (S.session.id || "");
+ const savedGemKey = sessionStorage.getItem("iad_gemini_key") || "";
+ $("#mg-t").textContent=su?"Panel super admin":"Panel moderasi admin";
+
+ let h=`<div class="card" style="background:var(--alt)"><h4>Ganti nama akun & kata sandi (${su?"Super Admin":"Admin"})</h4>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+ <label>Nama akun<input id="acc-chg-name" value="${esc(curAcctName)}" required></label>
+ <label>User ID akun<input id="acc-chg-uid" value="${esc(curAcctId)}" required></label>
+ <label>Kata sandi baru (kosongkan jika tidak diganti)<input id="acc-chg-pwd" type="password" autocomplete="new-password" placeholder="Minimal 4 karakter"></label>
+ </div>
+ <div style="margin-top:12px"><button class="btn pri sm" onclick="saveOwnAccountCredentials()">Simpan nama & kata sandi</button></div></div>
+
+ <div class="card" style="background:var(--alt)"><h4>Antrean moderasi (${pend.length})</h4>${pend.length?pend.map(b=>`<div class="row" style="background:var(--sf)"><div><b>${esc(b.title)}</b><small>${esc(b.author)}, ${esc(b.category)}, pengunggah: ${esc(b.uploaderEmail||"-")}</small></div><span style="display:flex;gap:6px"><button class="btn pri sm" onclick="approveBook('${b.id}')">Setujui</button><button class="btn sm dgr" onclick="removeBook('${b.id}')">Tolak</button></span></div>`).join(""):'<p style="color:var(--mu);margin:0">Tidak ada e-book yang menunggu persetujuan.</p>'}</div>
+ <div class="card" style="background:var(--alt)"><h4>Koleksi tayang (${ap.length})</h4>${ap.map(b=>`<div class="row" style="background:var(--sf)"><div><b>${esc(b.title)}</b><small>${esc(b.category)}</small></div><button class="btn sm dgr" onclick="removeBook('${b.id}')">Hapus</button></div>`).join("")}</div>
+ <div class="card" style="background:var(--alt)"><h4>Identitas dan logo</h4><div style="display:grid;gap:12px"><label>Judul website<input id="ac-t" value="${esc(S.siteConfig.title)}"></label><label>Teks pengumuman<input id="ac-b" value="${esc(S.siteConfig.announcement)}"></label>
+ <label>Logo website (PNG transparan, JPG, atau SVG, maksimal 1,5 MB)<input type="file" accept="image/*" onchange="handleAdminLogoUpload(event)"></label>
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri sm" onclick="saveAdminIdentitySettings()">Simpan identitas</button><button class="btn sm" onclick="resetLogo()">Reset logo bawaan</button></div></div></div>`;
+
+ if(su){
+  h+=`<div class="card" style="background:var(--alt)"><h4>Kustomisasi tampilan website (Super Admin)</h4>
+  <div style="display:grid;gap:12px">
+  <label>Judul utama website<input id="sa-title" value="${esc(S.siteConfig.title)}"></label>
+  <label>Judul hero halaman<input id="sa-hero" value="${esc(S.siteConfig.heroHeading||"")}"></label>
+  <label>Teks pengumuman banner<input id="sa-ann" value="${esc(S.siteConfig.announcement)}"></label>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+    <label style="flex:0 0 auto">Warna aksen<input type="color" id="sa-acc" value="${esc(S.siteConfig.accentColor||"#0A7C5A")}" style="width:54px;height:40px;padding:2px"></label>
+    <label style="flex:1;min-width:180px">Lebar minimum kartu grid<select id="sa-grid">
+      <option value="170px" ${S.siteConfig.gridMin==="170px"?"selected":""}>Rapat (170px)</option>
+      <option value="190px" ${!S.siteConfig.gridMin||S.siteConfig.gridMin==="190px"?"selected":""}>Standar (190px)</option>
+      <option value="240px" ${S.siteConfig.gridMin==="240px"?"selected":""}>Lebar (240px)</option>
+    </select></label>
+  </div>
+  <div><button class="btn pri sm" onclick="saveSuperAdminVisuals()">Terapkan tampilan</button></div>
+  </div></div>
+
+  <div class="card" style="background:var(--alt)"><h4>Ubah struktur coding dengan Gemini AI (Super Admin)</h4>
+  <div style="display:grid;gap:12px">
+  <label>Gemini API Key (tersimpan di sesi browser)<input type="password" id="gem-key" value="${esc(savedGemKey)}" placeholder="AIza..."></label>
+  <label>Instruksi perubahan struktur kode<textarea id="gem-prompt" rows="2" placeholder="Contoh: Beri garis tepi halus pada kartu buku dan tampilkan pesan sambutan saat halaman dimuat."></textarea></label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="btn pri sm" onclick="generateCodeWithGemini()">Buat struktur via Gemini AI</button>
+    <button type="button" class="btn sm" onclick="applyDynamicCodeInputs()">Terapkan kode di bawah</button>
+    <button type="button" class="btn sm dgr" onclick="resetDynamicCodeInputs()">Reset kode kustom</button>
+  </div>
+  <label>CSS Kustom<textarea id="gem-css" class="code-box" rows="4" placeholder="/* CSS tambahan */">${esc(S.siteConfig.customCss||"")}</textarea></label>
+  <label>JS Kustom (parameter tersedia: S, showToast, renderAll)<textarea id="gem-js" class="code-box" rows="4" placeholder="// JS tambahan">${esc(S.siteConfig.customJs||"")}</textarea></label>
+  </div></div>
+
+  <div class="card" style="background:var(--alt)"><h4>Pengaturan sistem</h4>
+  <label class="sx"><span>Terbitkan unggahan otomatis<small>Buku pengguna langsung tayang tanpa antrean moderasi.</small></span><input type="checkbox" id="sy-a" ${s.autoApproveUploads?"checked":""}></label>
+  <label class="sx"><span>Tampilkan banner pengumuman<small>Baris pengumuman di atas halaman.</small></span><input type="checkbox" id="sy-s" ${s.showAnnouncement!==false?"checked":""}></label>
+  <label class="sx"><span>Aktifkan katalog open-source<small>Akses buku domain publik internasional.</small></span><input type="checkbox" id="sy-o" ${s.enableOpenSourceTab!==false?"checked":""}></label>
+  <label>Batas ukuran file PDF (MB)<input type="number" id="sy-m" step="0.5" min="1" max="50" value="${Number(s.maxPdfSizeMb)||12}"></label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn pri sm" onclick="saveSystemSettings()">Simpan pengaturan</button><button class="btn sm" onclick="forceSyncFirebaseNow()">Sinkronkan ke Firebase</button><button class="btn sm dgr" onclick="resetDefaultCatalog()">Reset koleksi bawaan</button></div></div>
+
+  <div class="card" style="background:var(--alt)"><h4>Akun admin</h4><form onsubmit="createAdminAccount(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"><input id="na-n" placeholder="Nama pengurus" required><input id="na-u" placeholder="User ID admin" required><input id="na-p" type="password" placeholder="Kata sandi admin" required><button class="btn pri">Buat akun admin</button></form>
+  ${S.adminAccounts.length?S.adminAccounts.map(a=>`<div class="row" style="background:var(--sf)"><div><b>${esc(a.name)}</b><small>ID: ${esc(a.userId)}</small></div><button class="btn sm dgr" onclick="deleteAdminAccount('${a.id}')">Hapus akses</button></div>`).join(""):'<p style="color:var(--mu);margin:0">Belum ada akun admin.</p>'}</div>`;
+ }
+ $("#mg-b").innerHTML=h;openModal("m-mg")
+}
+
+function saveOwnAccountCredentials(){
+  if(!isAdm())return;
+  const newName = ($("#acc-chg-name")?.value || "").trim();
+  const newUid = ($("#acc-chg-uid")?.value || "").trim();
+  const newPwd = $("#acc-chg-pwd")?.value || "";
+  if(!newName || !newUid){showToast("Nama akun dan User ID wajib diisi");return;}
+  if(newPwd && newPwd.length < 4){showToast("Kata sandi minimal 4 karakter");return;}
+
+  if(isSuper()){
+    const sa = saCfg();
+    const effectivePwd = newPwd ? newPwd : atob(sa.passHash).split("|:|")[1];
+    sa.name = newName;
+    sa.userId = newUid;
+    sa.passHash = btoa(`${newUid}|:|${effectivePwd}`);
+    S.session.name = newName;
+    S.session.id = newUid;
+    getUserProfile(key()).displayName = newName;
+    persistAll(true);
+    renderAll();
+    openManagementPanel();
+    showToast("Nama & kata sandi Super Admin diperbarui");
+    return;
+  }
+
+  const idx = S.adminAccounts.findIndex(a => a.id === S.session.accountId || a.userId === S.session.id);
+  if(idx > -1){
+    if(S.adminAccounts.some((a,i)=>i!==idx && a.userId===newUid)){
+      showToast("User ID sudah dipakai akun Admin lain");
+      return;
+    }
+    const existingHash = S.adminAccounts[idx].passHash;
+    S.adminAccounts[idx].name = newName;
+    S.adminAccounts[idx].userId = newUid;
+    if(newPwd) S.adminAccounts[idx].passHash = btoa(newPwd);
+    else S.adminAccounts[idx].passHash = existingHash;
+    S.session.name = newName;
+    S.session.id = newUid;
+    getUserProfile(key()).displayName = newName;
+    persistAll(true);
+    renderAll();
+    openManagementPanel();
+    showToast("Nama & kata sandi Admin diperbarui");
+  }
+}
+
+function saveSuperAdminVisuals(){
+  if(!isSuper())return;
+  const t = ($("#sa-title")?.value || "").trim();
+  const hr = ($("#sa-hero")?.value || "").trim();
+  const an = ($("#sa-ann")?.value || "").trim();
+  const ac = $("#sa-acc")?.value || "";
+  const gr = $("#sa-grid")?.value || "";
+  if(t) S.siteConfig.title = t;
+  S.siteConfig.heroHeading = hr;
+  if(an) S.siteConfig.announcement = an;
+  S.siteConfig.accentColor = ac;
+  S.siteConfig.gridMin = gr;
+  persistAll(true);
+  renderAll();
+  showToast("Tampilan website diperbarui");
+}
+
+async function generateCodeWithGemini(){
+  if(!isSuper())return;
+  const apiKey = ($("#gem-key")?.value || "").trim();
+  const promptText = ($("#gem-prompt")?.value || "").trim();
+  if(!apiKey){showToast("Masukkan Gemini API Key terlebih dahulu");return;}
+  if(!promptText){showToast("Tuliskan instruksi perubahan struktur kode");return;}
+  sessionStorage.setItem("iad_gemini_key", apiKey);
+  showToast("Memproses struktur kode dengan Gemini AI...");
+  try{
+    const sysPrompt = `Kamu adalah asisten pengembang frontend untuk aplikasi web Perpustakaan Digital IAD Paser (vanilla HTML/CSS/JS).
+Balas HANYA dengan objek JSON valid tanpa markdown fence:
+{"css":"...","js":"...","note":"..."}
+Aturan:
+- "css": aturan CSS tambahan yang aman untuk menata elemen halaman (.bk, .hero, .card, .top, dll).
+- "js": kode JS singkat yang aman (tersedia parameter S, showToast, renderAll), tanpa memanggil eval atau menghapus listener utama.
+- "note": ringkasan singkat dalam bahasa Indonesia.`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        contents:[{parts:[{text:`${sysPrompt}\n\nInstruksi Super Admin: ${promptText}`}]}],
+        generationConfig:{responseMimeType:"application/json"}
+      })
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const cleaned = raw.replace(/^```json\s*/i,"").replace(/```$/i,"").trim();
+    const parsed = JSON.parse(cleaned);
+    if(typeof parsed.css==="string" && $("#gem-css")) $("#gem-css").value = parsed.css;
+    if(typeof parsed.js==="string" && $("#gem-js")) $("#gem-js").value = parsed.js;
+    applyDynamicCodeInputs();
+    showToast(parsed.note || "Struktur kode dari Gemini AI diterapkan");
+  }catch(e){
+    showToast("Gagal memanggil Gemini AI. Periksa API Key atau koneksi.");
+  }
+}
+
+function applyDynamicCodeInputs(){
+  if(!isSuper())return;
+  const k = ($("#gem-key")?.value || "").trim();
+  if(k) sessionStorage.setItem("iad_gemini_key", k);
+  S.siteConfig.customCss = $("#gem-css")?.value ?? S.siteConfig.customCss ?? "";
+  S.siteConfig.customJs = $("#gem-js")?.value ?? S.siteConfig.customJs ?? "";
+  lastAppliedJs = "";
+  persistAll(true);
+  applyDynamicCode();
+  showToast("Struktur CSS/JS kustom diterapkan");
+}
+
+function resetDynamicCodeInputs(){
+  if(!isSuper())return;
+  S.siteConfig.customCss = "";
+  S.siteConfig.customJs = "";
+  lastAppliedJs = "";
+  persistAll(true);
+  applyDynamicCode();
+  openManagementPanel();
+  showToast("Struktur kode kustom direset");
+}
+
+function handleAdminLogoUpload(e){const f=e.target.files[0];if(!f)return;if(f.size>1.5*1048576){showToast("Ukuran file logo maksimal 1,5 MB");return}const r=new FileReader();r.onload=ev=>{S.siteConfig.logoDataUrl=ev.target.result;persistAll(true);renderAll();openManagementPanel();showToast("Logo website diperbarui")};r.readAsDataURL(f)}
+function resetLogo(){S.siteConfig.logoDataUrl="";persistAll(true);renderAll();openManagementPanel();showToast("Logo dikembalikan ke bawaan")}
+function saveAdminIdentitySettings(){if(!isAdm())return;const t=$("#ac-t").value.trim(),b=$("#ac-b").value.trim();if(t)S.siteConfig.title=t;if(b)S.siteConfig.announcement=b;persistAll(true);renderAll();openManagementPanel();showToast("Judul web dan pengumuman disimpan")}
+function saveSystemSettings(){if(!isSuper())return;const m=parseFloat($("#sy-m").value);S.siteConfig.systemConfig={autoApproveUploads:$("#sy-a").checked,showAnnouncement:$("#sy-s").checked,enableOpenSourceTab:$("#sy-o").checked,maxPdfSizeMb:!isNaN(m)&&m>0?m:12};persistAll(true);renderAll();openManagementPanel();showToast("Pengaturan sistem disimpan")}
+async function forceSyncFirebaseNow(){if(!isSuper())return;await pushStateToFirebase();showToast("Data disinkronkan ke Firebase")}
+function resetDefaultCatalog(){if(!isSuper()||!confirm("Kembalikan koleksi ke 6 buku bawaan? Buku unggahan akan hilang dari katalog."))return;S.books=[...DEFAULT_BOOKS];persistAll(true);renderAll();openManagementPanel();showToast("Koleksi dikembalikan ke data awal")}
+function approveBook(id){const b=S.books.find(x=>x.id===id);if(b)b.status="approved";persistAll(true);renderAll();openManagementPanel();showToast("E-book disetujui dan tayang di katalog")}
+function removeBook(id){if(!confirm("Hapus e-book ini secara permanen?"))return;const t=S.books.find(x=>x.id===id);if(t&&t.type==="pdf")deletePdfFromFirebase(id);S.books=S.books.filter(x=>x.id!==id);persistAll(true);renderAll();openManagementPanel();showToast("E-book dihapus")}
+function createAdminAccount(e){e.preventDefault();if(!isSuper())return;const n=$("#na-n").value.trim(),u=$("#na-u").value.trim(),p=$("#na-p").value;if(S.adminAccounts.some(a=>a.userId===u)){showToast("User ID sudah digunakan");return}
+ S.adminAccounts.push({id:"adm-"+Date.now(),name:n,userId:u,passHash:btoa(p)});persistAll(true);openManagementPanel();showToast(`Akun admin untuk ${n} dibuat`)}
+function deleteAdminAccount(id){if(!isSuper())return;S.adminAccounts=S.adminAccounts.filter(a=>a.id!==id);persistAll(true);openManagementPanel();showToast("Akun admin dihapus")}
+
+/* === 12. NAVIGASI, TEMA, BAGIKAN === */
+function selectCategory(c){S.cat=c;renderCats();renderCatalog();document.getElementById("koleksi").scrollIntoView()}
+function handleGlobalSearch(go){S.q=$("#gs").value;renderCatalog();if(go)document.getElementById("koleksi").scrollIntoView()}
+function toggleTheme(){const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=d?"light":"dark";try{localStorage.setItem("iad_theme_v2",r.dataset.theme)}catch(e){}}
+try{const t=localStorage.getItem("iad_theme_v2");if(t)document.documentElement.dataset.theme=t}catch(e){}
+function shareCurrentBook(){if(!S.active)return;const t=`Membaca "${S.active.title}" oleh ${S.active.author} di Perpustakaan Digital IAD Paser.`;
+ if(navigator.share)navigator.share({title:S.active.title,text:t,url:location.href}).catch(()=>{});else{navigator.clipboard?.writeText(`${t} ${location.href}`).then(()=>showToast("Tautan dan info buku disalin"),()=>showToast("Gagal menyalin tautan"))}}
+document.querySelectorAll("dialog").forEach(d=>{if(d.id!=="rd")d.addEventListener("click",e=>{if(e.target===d)d.close()})});
+const dev=$("#dev");if(!matchMedia("(prefers-reduced-motion:reduce)").matches){let q=0;const f=()=>{dev.style.transform=`scale(${.92+.08*Math.min(1,scrollY/380)})`;q=0};f();addEventListener("scroll",()=>{if(!q)q=requestAnimationFrame(f)},{passive:true})}
+
+/* === BOOT === */
+loadState();renderAll();pullStateFromFirebase(true);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullStateFromFirebase(false)});
+</script>
+</body>
+</html>
